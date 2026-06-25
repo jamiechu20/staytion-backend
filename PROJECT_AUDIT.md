@@ -211,6 +211,8 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 **建議方向**：  
 所有類別統一改為建構子注入（配合 Lombok 的 `@RequiredArgsConstructor` 可大幅減少樣板程式碼）。
 
+> **補充（1.3 修復後新增）**：`JwtAuthenticationFilter.java:22` 的 `userRepository` 雖然已使用建構子注入，但欄位未宣告 `final`，無法保證不可變性。Stage 2 統一改建構子注入時一併修正。
+
 ---
 
 ### 3.3 GlobalExceptionHandler 完全被註解
@@ -302,6 +304,8 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 **建議方向**：  
 全部替換為 SLF4J Logger（`LoggerFactory.getLogger(...)`），並為含 token 或 email 的 log 使用 DEBUG level，不在 production 中預設開啟。
+
+> **補充（1.3 修復後新增）**：`JwtAuthenticationFilter.java:58` 的 `System.out.println("取得的 token: [" + token + "]")` 直接將完整 raw JWT token 印出，比其他地方更嚴重（token 本身可用來偽造身份），Stage 2 替換 logger 時應優先處理。
 
 ---
 
@@ -504,70 +508,70 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 
 ### Stage 1：安全性與緊急修復（先完成，其他才有意義）
 
-| 任務 | 模式 | 學習價值 |
-|------|------|---------|
-| 廢止 Firebase 私鑰，決定 BFG 清理歷史 | ⚡ Fix-it-faster | 低（操作性） |
-| 更換 JWT Secret 為高熵隨機值 | ⚡ Fix-it-faster | 低 |
-| 恢復 `JwtAuthenticationFilter` 並重啟 Security | 🎓 Learn-it-myself | **高**（核心 Spring Security 知識） |
-| 修復 `deleteReview` 的身份驗證 | 🎓 Learn-it-myself | 高 |
-| 刪除 `FirebaseTestController`、`TestController` | ⚡ Fix-it-faster | 低 |
-| 清理根目錄的測試 HTML、`bfg.jar`、`frontend/` | ⚡ Fix-it-faster | 低 |
+| 任務 | 模式 | 學習價值 | 稽核編號 |
+|------|------|---------|---------|
+| 廢止 Firebase 私鑰，決定 BFG 清理歷史 | ⚡ Fix-it-faster | 低（操作性） | [§1.1](#11-firebase-私鑰仍存在-git-歷史中) |
+| 更換 JWT Secret 為高熵隨機值 | ⚡ Fix-it-faster | 低 | [§1.2](#12-本地-env-中的-jwt-secret-強度過低) |
+| 恢復 `JwtAuthenticationFilter` 並重啟 Security | 🎓 Learn-it-myself | **高**（核心 Spring Security 知識） | [§1.3](#13-所有-api-端點完全開放jwt-驗證被完整繞過) |
+| 修復 `deleteReview` 的身份驗證 | 🎓 Learn-it-myself | 高 | [§1.6](#16-刪除評論-api-未從-jwt-驗證身份) |
+| 刪除 `FirebaseTestController`、`TestController` | ⚡ Fix-it-faster | 低 | [§1.4](#14-debug-用控制器暴露在正式環境) |
+| 清理根目錄的測試 HTML、`bfg.jar`、`frontend/` | ⚡ Fix-it-faster | 低 | [§6](#6-未完成的第三方整合firebase--google-maps) |
 
 ---
 
 ### Stage 2：DI 與架構清理
 
-| 任務 | 模式 | 學習價值 |
-|------|------|---------|
-| 所有 Service 改為建構子注入（可用 Lombok） | 🎓 Learn-it-myself | **高**（面試必考） |
-| `AuthService` 移除 `ResponseEntity`，改拋 custom exception | 🎓 Learn-it-myself | **高**（分層架構概念） |
-| 啟用 `GlobalExceptionHandler`，統一錯誤回應格式 | 🎓 Learn-it-myself | 高 |
-| 移除 Controller 中的 Repository 直接存取 | 🎓 Learn-it-myself | 高 |
-| 修復 `FirebaseConfig` 的 `javax` → `jakarta` import | ⚡ Fix-it-faster | 低 |
-| 修復 `ReviewService` 日期過濾 bug | ⚡ Fix-it-faster | 低 |
-| 統一 CORS 設定，移除分散的 `@CrossOrigin` | ⚡ Fix-it-faster | 低 |
-| 刪除死碼（`OrderService.java`、大量 comment blocks） | ⚡ Fix-it-faster | 低 |
-| 替換 `System.out.println` 為 SLF4J Logger | ⚡ Fix-it-faster | 低（但面試表現重要） |
-| 整合 Arvin 系列到對應 class，刪除命名類別 | ⚡ Fix-it-faster | 低 |
-| 重命名 package 為 `com.staytion.backend` | ⚡ Fix-it-faster | 低 |
+| 任務 | 模式 | 學習價值 | 稽核編號 |
+|------|------|---------|---------|
+| 所有 Service 改為建構子注入（可用 Lombok） | 🎓 Learn-it-myself | **高**（面試必考） | [§3.2](#32-autowired-欄位注入field-injection) |
+| `AuthService` 移除 `ResponseEntity`，改拋 custom exception | 🎓 Learn-it-myself | **高**（分層架構概念） | [§2.1](#21-service-層回傳-responseentity職責錯誤) |
+| 啟用 `GlobalExceptionHandler`，統一錯誤回應格式 | 🎓 Learn-it-myself | 高 | [§3.3](#33-globalexceptionhandler-完全被註解) |
+| 移除 Controller 中的 Repository 直接存取 | 🎓 Learn-it-myself | 高 | [§2.3](#23-controller-直接存取-repository) |
+| 修復 `FirebaseConfig` 的 `javax` → `jakarta` import | ⚡ Fix-it-faster | 低 | [§4.7](#47-javaxannotation-vs-jakartaannotation) |
+| 修復 `ReviewService` 日期過濾 bug | ⚡ Fix-it-faster | 低 | [§4.6](#46-reviewservice-的日期過濾-bug) |
+| 統一 CORS 設定，移除分散的 `@CrossOrigin` | ⚡ Fix-it-faster | 低 | [§1.5](#15-cors-設定不一致websocket-完全開放) |
+| 刪除死碼（`OrderService.java`、大量 comment blocks） | ⚡ Fix-it-faster | 低 | [§4.3](#43-大量被註解的死碼) |
+| 替換 `System.out.println` 為 SLF4J Logger | ⚡ Fix-it-faster | 低（但面試表現重要） | [§4.4](#44-systemoutprintln-滿佈-production-程式碼) |
+| 整合 Arvin 系列到對應 class，刪除命名類別 | ⚡ Fix-it-faster | 低 | [§4.2](#42-隊友名字出現在類別名稱中) |
+| 重命名 package 為 `com.staytion.backend` | ⚡ Fix-it-faster | 低 | [§4.1](#41-package-名稱仍是-spring-initializr-預設值) |
 
 ---
 
 ### Stage 3：資料庫設計優化 + MySQL → PostgreSQL 遷移
 
-| 任務 | 模式 | 學習價值 |
-|------|------|---------|
-| 引入 Flyway，建立 baseline schema migration | 🎓 Learn-it-myself | **高**（重要業界工具） |
-| 修復 `Order.status` 的 MySQL ENUM `columnDefinition` | 🎓 Learn-it-myself | 高（JPA 映射原理） |
-| 修復 native query 中的 Boolean 語法 | ⚡ Fix-it-faster | 低 |
-| 替換 JDBC driver 和 datasource URL | ⚡ Fix-it-faster | 低 |
-| 修復 `HotelServiceImpl.searchHotels()` N+1 問題 | 🎓 Learn-it-myself | **高**（N+1 是面試熱點） |
-| 修復 `FavoriteServiceImpl.getFavoriteHotels()` N+1 | 🎓 Learn-it-myself | 高 |
-| 為常用查詢欄位加索引（Flyway migration） | 🎓 Learn-it-myself | 中（DB 設計概念） |
-| 本地 Docker PostgreSQL 驗證遷移正確性 | 🎓 Learn-it-myself | **高**（實際動手體驗） |
+| 任務 | 模式 | 學習價值 | 稽核編號 |
+|------|------|---------|---------|
+| 引入 Flyway，建立 baseline schema migration | 🎓 Learn-it-myself | **高**（重要業界工具） | [§5.3](#53-缺少-schema-migration-工具flyway--liquibase) |
+| 修復 `Order.status` 的 MySQL ENUM `columnDefinition` | 🎓 Learn-it-myself | 高（JPA 映射原理） | [§5.2](#52-mysql-專屬語法在-entity-中硬編碼) |
+| 修復 native query 中的 Boolean 語法 | ⚡ Fix-it-faster | 低 | [§5.2](#52-mysql-專屬語法在-entity-中硬編碼) |
+| 替換 JDBC driver 和 datasource URL | ⚡ Fix-it-faster | 低 | [§5.4](#54-mysql--postgresql-遷移全面評估) |
+| 修復 `HotelServiceImpl.searchHotels()` N+1 問題 | 🎓 Learn-it-myself | **高**（N+1 是面試熱點） | [§2.2](#22-搜尋邏輯載入全部資料到記憶體致命效能問題) / [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
+| 修復 `FavoriteServiceImpl.getFavoriteHotels()` N+1 | 🎓 Learn-it-myself | 高 | [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
+| 為常用查詢欄位加索引（Flyway migration） | 🎓 Learn-it-myself | 中（DB 設計概念） | [§5.5](#55-缺少索引可擴展性問題) |
+| 本地 Docker PostgreSQL 驗證遷移正確性 | 🎓 Learn-it-myself | **高**（實際動手體驗） | [§5.4](#54-mysql--postgresql-遷移全面評估) |
 
 ---
 
 ### Stage 4：決定未完成 API 整合的命運
 
-| 任務 | 模式 | 學習價值 |
-|------|------|---------|
-| 選擇 Firebase 整合方向（保留/移除）並執行 | 🎓 Learn-it-myself | **高**（若保留：OAuth 流程設計） |
-| Google Sign-In 改為驗證 Firebase ID Token | 🎓 Learn-it-myself | **高**（安全性核心） |
-| 確認 Google Maps API Key 有效性，完善 GeocodingService 呼叫時機 | 🎓 Learn-it-myself | 中 |
-| 決定是否保留 OAuth2 Client（Spring Security）並與 JWT 整合 | 🎓 Learn-it-myself | **高** |
+| 任務 | 模式 | 學習價值 | 稽核編號 |
+|------|------|---------|---------|
+| 選擇 Firebase 整合方向（保留/移除）並執行 | 🎓 Learn-it-myself | **高**（若保留：OAuth 流程設計） | [§6](#6-未完成的第三方整合firebase--google-maps) |
+| Google Sign-In 改為驗證 Firebase ID Token | 🎓 Learn-it-myself | **高**（安全性核心） | [§6](#6-未完成的第三方整合firebase--google-maps) |
+| 確認 Google Maps API Key 有效性，完善 GeocodingService 呼叫時機 | 🎓 Learn-it-myself | 中 | [§6](#6-未完成的第三方整合firebase--google-maps) |
+| 決定是否保留 OAuth2 Client（Spring Security）並與 JWT 整合 | 🎓 Learn-it-myself | **高** | [§6](#6-未完成的第三方整合firebase--google-maps) |
 
 ---
 
 ### Stage 5：程式碼品質收尾（Portfolio 收尾）
 
-| 任務 | 模式 | 學習價值 |
-|------|------|---------|
-| 補齊 DTO 分層，統一命名規則 | ⚡ Fix-it-faster | 低 |
-| 為 User Center 模組補單元測試 | 🎓 Learn-it-myself | **高**（面試必問） |
-| 整合 `AuthService` 的 Firebase 和本地帳號狀態一致性 | 🎓 Learn-it-myself | 高 |
-| 為 Entity 加基礎業務邏輯（`order.cancel()`） | 🎓 Learn-it-myself | 中（DDD 入門） |
-| 撰寫 README，說明架構、啟動方式、技術選型理由 | ⚡ Fix-it-faster | 低（但 Portfolio 必需） |
+| 任務 | 模式 | 學習價值 | 稽核編號 |
+|------|------|---------|---------|
+| 補齊 DTO 分層，統一命名規則 | ⚡ Fix-it-faster | 低 | [§4.5](#45-dto-命名與分層不一致) |
+| 為 User Center 模組補單元測試 | 🎓 Learn-it-myself | **高**（面試必問） | — |
+| 整合 `AuthService` 的 Firebase 和本地帳號狀態一致性 | 🎓 Learn-it-myself | 高 | [§2.4](#24-auth-流程db-寫入與-firebase-建立無法原子性回滾) |
+| 為 Entity 加基礎業務邏輯（`order.cancel()`） | 🎓 Learn-it-myself | 中（DDD 入門） | [§3.1](#31-貧血領域模型anemic-domain-model) |
+| 撰寫 README，說明架構、啟動方式、技術選型理由 | ⚡ Fix-it-faster | 低（但 Portfolio 必需） | — |
 
 ---
 

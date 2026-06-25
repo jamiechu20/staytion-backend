@@ -22,7 +22,6 @@ public class JwtService {
     private String jwtSecret;
 
     private final long EXP_TIME = 120 * 60 * 1000; // 120 分鐘
-
     public String createToken(User user) {
         Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
 
