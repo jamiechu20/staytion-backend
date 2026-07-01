@@ -39,6 +39,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/bookings/**",
+                                "/api/hotels/**",
                                 "/api/top-hotels",
                                 "/api/city/{id}/hotel-count",
                                 "/v3/api-docs/**",

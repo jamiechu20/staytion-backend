@@ -19,7 +19,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
     public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
         this.jwtService = jwtService;
@@ -33,20 +33,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
         System.out.println("JwtFilter intercept path: " + path);  // debug log
-
-        if (path.startsWith("/api/auth/register")
-                || path.startsWith("/api/auth/login-password")
-                || path.startsWith("/api/auth/google-login")
-                || path.startsWith("/api/auth/check-email")
-                || path.startsWith("/api/auth/forgot-password")
-                || path.startsWith("/api/auth/reset-password")
-                || path.startsWith("/v3/api-docs")
-                || path.startsWith("/swagger-ui")
-                || path.startsWith("/swagger-ui.html")
-                || path.startsWith("/ws")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
 
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {

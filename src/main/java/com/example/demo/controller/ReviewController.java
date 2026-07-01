@@ -5,6 +5,7 @@ import com.example.demo.dto.ReviewReplyDto;
 import com.example.demo.dto.UnreviewedOrderDto;
 import com.example.demo.dto.request.CreateReviewRequestDto;
 import com.example.demo.dto.response.ReviewResponseDto;
+import com.example.demo.entity.User;
 import com.example.demo.service.JwtService;
 import com.example.demo.service.ReviewService;
 import com.example.demo.service.UserService;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -111,13 +113,14 @@ public class ReviewController {
     }
 
     // 刪除評論
-    @DeleteMapping("/users/{userId}/reviews/{id}")
+    @DeleteMapping("/users/me/reviews/{id}")
     @Operation(summary = "刪除評論")
     public void deleteReview(
-            @PathVariable("userId") Long userId,
-            @PathVariable("id") Long id
+            @PathVariable("id") Long id,
+            Authentication authentication
     ) {
-        reviewService.deleteReview(userId, id);
+        User currentUser = (User) authentication.getPrincipal();
+        reviewService.deleteReview(currentUser.getId(), id);
     }
 
     // 查詢飯店平均分數
