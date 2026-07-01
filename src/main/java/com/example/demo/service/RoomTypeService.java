@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.dto.AmenityDTO;
@@ -13,10 +13,10 @@ import com.example.demo.entity.RoomType;
 import com.example.demo.repository.RoomTypeRepository;
 
 @Service
+@RequiredArgsConstructor
 public class RoomTypeService {
 
-    @Autowired
-    private RoomTypeRepository roomTypeRepository;
+    private final RoomTypeRepository roomTypeRepository;
 
     public List<RoomTypeDTO> findRoomTypesByHotel(Long hotelId) {
         List<RoomType> entities = roomTypeRepository.findByHotelId(hotelId);

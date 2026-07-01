@@ -3,7 +3,7 @@ package com.example.demo.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.dto.HistoryRequestDto;
@@ -19,19 +19,16 @@ import com.example.demo.repository.HistoryRepository;
 import com.example.demo.repository.UserRepository;
 
 @Service
+@RequiredArgsConstructor
 public class HistoryService {
 
-	@Autowired
-	private HistoryRepository historyRepository;
+	private final HistoryRepository historyRepository;
 
-	@Autowired
-	private UserRepository userRepository;
+	private final UserRepository userRepository;
 
-	@Autowired
-	private CityRepository cityRepository;
+	private final CityRepository cityRepository;
 
-	@Autowired
-	private DistrictRepository districtRepository;
+	private final DistrictRepository districtRepository;
 
 	public List<HistoryProjection> getHistoriesByUserId(Long userId) {
 		return historyRepository.findHistoriesByUserId(userId);

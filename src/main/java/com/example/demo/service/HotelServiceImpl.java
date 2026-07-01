@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.example.demo.projection.HotelProjection;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -28,16 +28,13 @@ import com.example.demo.repository.ImageRepository;
 import com.example.demo.repository.RoomTypeRepository;
 
 @Service
+@RequiredArgsConstructor
 public class HotelServiceImpl implements HotelService {
 
-    @Autowired
-    private AmenityRepository amenityRepository;
-    @Autowired
-    private HotelRepository hotelRepository;
-    @Autowired
-    private RoomTypeRepository roomTypeRepository;
-    @Autowired
-    private ImageRepository imageRepository;
+    private final AmenityRepository amenityRepository;
+    private final HotelRepository hotelRepository;
+    private final RoomTypeRepository roomTypeRepository;
+    private final ImageRepository imageRepository;
 
     @Override
     public Page<HotelSearchRequest> searchHotels(HotelSearchResult dto, int page, int size) {

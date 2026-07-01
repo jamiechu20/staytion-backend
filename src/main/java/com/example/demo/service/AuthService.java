@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,23 +21,19 @@ import com.google.firebase.auth.UserRecord;
 import com.google.firebase.auth.UserRecord.CreateRequest;
 
 @Service
+@RequiredArgsConstructor
 public class AuthService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private MailService mailService;
+    private final MailService mailService;
 
-	@Autowired
-	private JwtService jwtService;
+	private final JwtService jwtService;
 
-	@Autowired
-	FirebaseService firebaseService;
-	
+	private final FirebaseService firebaseService;
+
 	@Value("${app.reset.password.url}")
 	private String resetPasswordUrl;
 

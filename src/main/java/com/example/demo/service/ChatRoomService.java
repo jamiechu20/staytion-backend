@@ -6,7 +6,7 @@ import com.example.demo.repository.ChatRoomRepository;
 import com.example.demo.repository.HotelRepository;
 import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -15,18 +15,15 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ChatRoomService {
-    @Autowired
-    private ChatRoomRepository chatRoomRepository;
+    private final ChatRoomRepository chatRoomRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private HotelRepository hotelRepository;
+    private final HotelRepository hotelRepository;
 
-    @Autowired
-    private MessageRepository messageRepository;
+    private final MessageRepository messageRepository;
 
     // 新增：根據兩個用戶和飯店查找或創建聊天室
 

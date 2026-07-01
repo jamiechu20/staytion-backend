@@ -9,7 +9,7 @@ import com.example.demo.entity.RoomType;
 import com.example.demo.repository.OrderItemRepository;
 import com.example.demo.repository.RoomAvailabilityRepository;
 import com.example.demo.repository.RoomTypeRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -18,16 +18,14 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class RoomAvailabilityService {
 
-    @Autowired
-    private RoomAvailabilityRepository roomAvailabilityRepository;
+    private final RoomAvailabilityRepository roomAvailabilityRepository;
 
-    @Autowired
-    private RoomTypeRepository roomTypeRepository;
+    private final RoomTypeRepository roomTypeRepository;
 
-    @Autowired
-    private OrderItemRepository orderItemRepository;
+    private final OrderItemRepository orderItemRepository;
 
 
     public Optional<RoomAvailability>

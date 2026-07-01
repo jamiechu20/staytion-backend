@@ -3,7 +3,7 @@ package com.example.demo.service;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.projection.CityProjection;
@@ -11,10 +11,10 @@ import com.example.demo.repository.CityRepository;
 
 
 @Service
+@RequiredArgsConstructor
 public class CityService {
 
-	@Autowired
-	private CityRepository cityRepository;
+	private final CityRepository cityRepository;
 
 	public Map<String, Object> getCityHotelCount(Long cityId) {
 		CityProjection data = cityRepository.findHotelCountByCityId(cityId);

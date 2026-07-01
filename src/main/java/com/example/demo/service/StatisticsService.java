@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import com.example.demo.repository.RoomTypeRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.dto.response.ChartData;
@@ -14,13 +14,12 @@ import com.example.demo.dto.response.ReportSummary;
 import com.example.demo.repository.OrderRepository;
 
 @Service
+@RequiredArgsConstructor
 public class StatisticsService {
 
-	@Autowired
-	private OrderRepository orderRepository;
+	private final OrderRepository orderRepository;
 
-	@Autowired
-	private RoomTypeRepository roomTypeRepository;
+	private final RoomTypeRepository roomTypeRepository;
 
 	// 取得有訂單的年份
 	public List<Integer> getAvailableYears(Long ownerId) {

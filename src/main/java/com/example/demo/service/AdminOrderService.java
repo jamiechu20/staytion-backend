@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,10 +21,10 @@ import com.example.demo.repository.OrderRepository;
 import com.example.demo.repository.PaymentRepository;
 
 @Service
+@RequiredArgsConstructor
 public class AdminOrderService {
 
-	@Autowired
-	private OrderRepository orderRepository;
+	private final OrderRepository orderRepository;
 
 	// 查全部訂單
 	public List<OrderResponseDto> getAllOrders() {

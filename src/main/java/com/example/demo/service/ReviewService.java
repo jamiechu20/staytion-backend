@@ -6,7 +6,7 @@ import com.example.demo.dto.request.CreateReviewRequestDto;
 import com.example.demo.dto.response.ReviewResponseDto;
 import com.example.demo.entity.*;
 import com.example.demo.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,22 +21,18 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class ReviewService {
 
-    @Autowired
-    private ReviewRepository reviewRepo;
+    private final ReviewRepository reviewRepo;
 
-    @Autowired
-    private UserRepository userRepo;
+    private final UserRepository userRepo;
 
-    @Autowired
-    private OrderRepository orderRepo;
+    private final OrderRepository orderRepo;
 
-    @Autowired
-    private HotelRepository hotelRepo;
+    private final HotelRepository hotelRepo;
 
-    @Autowired
-    private OrderItemRepository orderItemRepo;
+    private final OrderItemRepository orderItemRepo;
 
     // 取得指定飯店評論
     public HotelReviewSummaryDto getByHotel(Long hotelId) {

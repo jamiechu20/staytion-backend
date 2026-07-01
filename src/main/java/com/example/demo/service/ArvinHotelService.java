@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
 
 import com.example.demo.entity.*;
 import com.example.demo.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,28 +16,22 @@ import com.example.demo.util.AddressParserService;
 import com.example.demo.util.GeocodingService;
 
 @Service
+@RequiredArgsConstructor
 public class ArvinHotelService {
 
-    @Autowired
-    private HotelRepository hotelRepository;
+    private final HotelRepository hotelRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private DistrictRepository districtRepository;
-    
-    @Autowired
-    private ImageRepository imageRepository;
-    
-    @Autowired
-    private AddressParserService addressParserService;
-    
-    @Autowired
-    private GeocodingService geocodingService;
+    private final DistrictRepository districtRepository;
 
-    @Autowired
-    private AmenityRepository amenityRepository;
+    private final ImageRepository imageRepository;
+
+    private final AddressParserService addressParserService;
+
+    private final GeocodingService geocodingService;
+
+    private final AmenityRepository amenityRepository;
 
 //    查詢全部飯店(但應該不需要?)
 //    public List<HotelResponseDto> getAllHotels() {

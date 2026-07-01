@@ -6,7 +6,7 @@ import com.example.demo.dto.OrderItemRequest;
 import com.example.demo.dto.OrderItemResponse;
 import com.example.demo.entity.*;
 import com.example.demo.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,22 +18,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class BookingService {
 
-	@Autowired
-	private UserRepository userRepository;
-	@Autowired
-	private RoomTypeRepository roomTypeRepository;
-	@Autowired
-	private HotelRepository hotelRepository;
-	@Autowired
-	private OrderRepository orderRepository;
-	@Autowired
-	private OrderItemRepository orderItemRepository;
-	@Autowired
-	private RoomAvailabilityRepository roomAvailabilityRepository; // <<== 加這個
-	@Autowired
-	private RoomAvailabilityService roomAvailabilityService;
+	private final UserRepository userRepository;
+	private final RoomTypeRepository roomTypeRepository;
+	private final HotelRepository hotelRepository;
+	private final OrderRepository orderRepository;
+	private final OrderItemRepository orderItemRepository;
+	private final RoomAvailabilityRepository roomAvailabilityRepository;
+	private final RoomAvailabilityService roomAvailabilityService;
 
 	// ===== 建立訂單並遞減庫存 =====
 	@Transactional

@@ -4,25 +4,20 @@ import com.example.demo.entity.Order;
 import com.example.demo.entity.Payment;
 import com.example.demo.entity.Payment.PaymentMethod;
 import com.example.demo.entity.Payment.PaymentStatus;
-import com.example.demo.repository.PaymentRepository; // 導入 PaymentRepository
+import com.example.demo.repository.PaymentRepository;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-/**
- * 支付服務類別。
- * 結合了介面定義和實作，直接作為 Spring 服務元件。
- */
-@Service // 將 @Service 註解直接加在類別上
+@Service
+@RequiredArgsConstructor
 public class PaymentService {
 
-
-    @Autowired
-    private PaymentRepository paymentRepository;
+    private final PaymentRepository paymentRepository;
     
 
     /**

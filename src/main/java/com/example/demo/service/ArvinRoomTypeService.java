@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,16 +21,14 @@ import com.example.demo.repository.HotelRepository;
 import com.example.demo.repository.RoomTypeRepository;
 
 @Service
+@RequiredArgsConstructor
 public class ArvinRoomTypeService {
 
-    @Autowired
-    private RoomTypeRepository roomTypeRepository;
+    private final RoomTypeRepository roomTypeRepository;
 
-    @Autowired
-    private HotelRepository hotelRepository;
+    private final HotelRepository hotelRepository;
 
-    @Autowired
-    private AmenityRepository amenityRepository;
+    private final AmenityRepository amenityRepository;
 
     // 查詢全部房型
     public List<RoomTypeResponseDto> getAllRoomTypes() {

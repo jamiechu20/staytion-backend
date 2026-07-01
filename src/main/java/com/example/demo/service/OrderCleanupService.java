@@ -2,12 +2,12 @@ package com.example.demo.service;
 
 import com.example.demo.entity.Order;
 import com.example.demo.entity.Order.OrderStatus;
-import com.example.demo.entity.Payment.PaymentStatus; // 導入 PaymentStatus
+import com.example.demo.entity.Payment.PaymentStatus;
 import com.example.demo.repository.OrderRepository;
 
 import jakarta.transaction.Transactional;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -15,14 +15,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class OrderCleanupService {
 
-    @Autowired
-    private OrderRepository orderRepository;
+    private final OrderRepository orderRepository;
 
-
-    @Autowired
-    private PaymentService paymentService; // 注入 PaymentService
+    private final PaymentService paymentService;
 
     @Scheduled(fixedRate = 30 * 60 * 1000) // 每 30 分鐘執行一次
     @Transactional // 確保整個操作（訂單和支付狀態更新）在一個事務中

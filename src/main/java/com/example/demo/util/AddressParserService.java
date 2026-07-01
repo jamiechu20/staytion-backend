@@ -2,7 +2,7 @@ package com.example.demo.util;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.entity.City;
@@ -11,13 +11,12 @@ import com.example.demo.repository.CityRepository;
 import com.example.demo.repository.DistrictRepository;
 
 @Service
+@RequiredArgsConstructor
 public class AddressParserService {
 
-    @Autowired
-    private CityRepository cityRepository;
+    private final CityRepository cityRepository;
 
-    @Autowired
-    private DistrictRepository districtRepository;
+    private final DistrictRepository districtRepository;
 
     public District parseDistrictFromAddress(String fullAddress) {
         List<City> cities = cityRepository.findAll();
