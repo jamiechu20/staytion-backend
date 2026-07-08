@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 
+import com.example.demo.exception.EmailNotVerifiedException;
+import com.example.demo.exception.InvalidCredentialsException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -38,39 +40,21 @@ public class AuthService {
 	private String resetPasswordUrl;
 
     // 檢查 email 是否存在
-    public ResponseEntity<String> checkEmail(String email) {
-
-		if (userRepository.existsByEmail(email)) {
-			return ResponseEntity.ok("EXISTS");
-		} else {
-			// 帳號不存在
-			return ResponseEntity.status(404).body("NOT_FOUND");
-		}
+    public boolean checkEmail(String email) {
+		return userRepository.existsByEmail(email);
 	}
 
 	// 使用email+密碼登入
-	public ResponseEntity<Map<String, String>> loginWithPassword(LoginRequest request) {
+	public String loginWithPassword(LoginRequest request) {
 		User user = userRepository.findByEmail(request.getEmail())
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "帳號不存在"));
-
-		// 檢查 Firebase 上的 email 是否已驗證
-		try {
-			UserRecord firebaseUser = FirebaseAuth.getInstance().getUserByEmail(request.getEmail());
-			System.out.println("Firebase 驗證狀態：" + firebaseUser.isEmailVerified());
-			if (!firebaseUser.isEmailVerified()) {
-				throw new ResponseStatusException(HttpStatus.FORBIDDEN, "您的電子郵件尚未驗證。請查收驗證郵件。");
-			}
-		} catch (Exception e) {
-			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Firebase 錯誤：" + e.getMessage());
-		}
-
-		if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "密碼錯誤");
-		}
-
-        String token = jwtService.createToken(user);
-
-        return ResponseEntity.ok(Map.of("token", token));
+				.orElseThrow(() -> new InvalidCredentialsException("帳號或密碼錯誤"));
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new InvalidCredentialsException("帳號或密碼錯誤");
+        }
+        if(!user.getEmailVerified()){
+            throw  new EmailNotVerifiedException("電子郵件尚未驗證");
+        }
+        return jwtService.createToken(user);
     }
 
     // 註冊

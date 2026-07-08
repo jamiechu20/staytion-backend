@@ -213,6 +213,10 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 > **補充（1.3 修復後新增）**：`JwtAuthenticationFilter.java:22` 的 `userRepository` 雖然已使用建構子注入，但欄位未宣告 `final`，無法保證不可變性。Stage 2 統一改建構子注入時一併修正。
 
+> **✅ 已修復（2026-07-03，隨 2.1 一併處理）**：`AuthController` 的混合注入（`MailService` 建構子注入 + `AuthService`/`UserRepository` 欄位注入）已統一改為建構子注入 + `@RequiredArgsConstructor`，並移除不再使用的 `UserRepository` 注入（對應 §2.3 的一部分）。至此本項清單列出的所有位置皆已完成。
+
+> **補充（2026-07-03 新增）**：本項原本的「位置」清單只點名了 `AuthController`，但複查後發現其餘 20 個 controller 全部都還是 `@Autowired` 欄位注入，從未被納入本項範圍。是否要在後續 Stage 2 收尾時一併統一改為建構子注入，待決定；先記錄於此避免遺漏。
+
 ---
 
 ### 3.3 GlobalExceptionHandler 完全被註解
@@ -227,6 +231,10 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 **建議方向**：  
 啟用 `GlobalExceptionHandler`，補上常用的例外映射（`IllegalArgumentException → 400`、`RuntimeException → 500`），並定義統一的錯誤回應 DTO（`ErrorResponse { status, message, timestamp }`）。
+
+> **✅ 部分已修復（2026-07-09，隨 §2.1 Auth 重構一併處理）**：`GlobalExceptionHandler` 已解除註解啟用，並新增 `InvalidCredentialsException`（401）、`EmailNotVerifiedException`（403）的映射，與既有的 `HotelNotFoundException`、`RoomTypeNotFoundException`（皆 404）並列。
+
+> **待辦（2026-07-09 新增）**：目前 4 個 `@ExceptionHandler` 方法都是重複的樣板（各自建立 `HashMap`、塞入相同的 4 個 key，只有 status/error 字串/例外型別不同）。可以抽一個 private helper method（例如 `buildErrorResponse(HttpStatus status, String error, String message)`）收斂重複邏輯。使用者評估後決定不急著做，留到之後有空時處理，不影響目前 Auth 重構進度。
 
 ---
 
@@ -289,6 +297,8 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 **建議方向**：  
 刪除完全被註解的檔案和函式；`BookingService` 中未完成的 `updateBooking` 邏輯如果還需要完成，應開 TODO comment 而非留著整塊 comment block。
+
+> **補充（2026-07-09 新增，處理 §3.3 時發現）**：`exception/JwtAuthException.java` 是個空類別（連 `extends RuntimeException` 都沒有），且全專案沒有任何地方真的拋出它，`GlobalExceptionHandler` 裡對應的 handler 也一直被註解著。屬於死碼，待本階段清理時一併刪除。
 
 ---
 
@@ -475,6 +485,8 @@ MySQL 中 boolean 值用 `0/1` 表示，PostgreSQL 要求 `= true`（或 `IS TRU
 - 根目錄有大量測試 HTML 頁面：`firebase-google-signin.html`、`firebase-setup-test.html`、`test-google-login.html` 等，全部應移除
 - `bfg-1.14.0.jar` 遺留在根目錄
 - `frontend/` 資料夾不應在後端 repo 中
+
+> **✅ 方向已決定（2026-07-08）**：選擇**選項 B：移除 Firebase 整合**。決定於 Stage 2（§2.1 AuthService 重構）進行到一半時提前拍板，因為 `loginWithPassword`、`register`、`handleGoogleLogin` 三個方法都直接呼叫 `FirebaseAuth`，若先照舊邏輯把回傳型別改完再拆 Firebase，等於做兩次工。執行順序：先在 §2.1 這一輪重構中，把三個方法的 Firebase 呼叫換成本地邏輯（`User.emailVerified` 欄位已於同一輪加入），下方 Stage 4 的「執行」與「移除依賴」項目待 AuthService 邏輯穩定後再收尾（避免中途編譯不過）。
 
 **最小清理路徑（二選一）**：
 

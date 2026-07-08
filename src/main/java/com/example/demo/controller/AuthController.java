@@ -2,28 +2,15 @@ package com.example.demo.controller;
 
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.dto.EmailRequest;
 import com.example.demo.dto.ForgotPasswordRequest;
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.dto.ResetPasswordRequest;
-import com.example.demo.dto.UserUpdateRequest;
-import com.example.demo.entity.User;
-import com.example.demo.repository.UserRepository;
 import com.example.demo.service.*;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
@@ -33,21 +20,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api")
 @CrossOrigin(origins = "http://127.0.0.1:5500")
 public class AuthController {
 
     private final MailService mailService;
-
-	@Autowired
-	private AuthService authService;
-
-	@Autowired
-	private UserRepository userRepository;
-
-    AuthController(MailService mailService) {
-        this.mailService = mailService;
-    }
+	private final AuthService authService;
 
 	// Google 登入
 	@PostMapping("/auth/google-login")
@@ -63,8 +42,8 @@ public class AuthController {
 	// 檢查email是否存在
 	@Operation(summary = "檢查電子郵件是否已註冊", description = "提供電子郵件來檢查該郵箱是否已經註冊過")
 	@PostMapping("/auth/check-email")
-	public ResponseEntity<Map<String, Boolean>> checkEmail(@RequestBody @Valid EmailRequest request) {
-		boolean exists = userRepository.existsByEmail(request.getEmail());
+	public ResponseEntity<Map<String, Boolean>> checkEmailExist(@RequestBody @Valid EmailRequest request) {
+		boolean exists = authService.checkEmail(request.getEmail());
 		return ResponseEntity.ok(Map.of("exists", exists));
 	}
 
@@ -72,7 +51,8 @@ public class AuthController {
 	@Operation(summary = "使用密碼登入", description = "根據使用者提供的帳號和密碼進行登入，成功後返回 JWT Token")
 	@PostMapping("/auth/login-password")
 	public ResponseEntity<Map<String, String>> login(@RequestBody @Valid LoginRequest request) {
-		return authService.loginWithPassword(request);
+		String token =  authService.loginWithPassword(request);
+		return ResponseEntity.ok(Map.of("token", token));
 	}
 
 	// 註冊並呼叫Service處理註冊與寄信
