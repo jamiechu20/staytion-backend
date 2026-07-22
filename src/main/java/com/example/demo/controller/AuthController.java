@@ -59,7 +59,8 @@ public class AuthController {
 	@Operation(summary = "註冊新用戶", description = "提供註冊所需資料(email、password、lastName、firstName)並創建新用戶，註冊成功會發送確認郵件")
 	@PostMapping("/auth/register")
 	public ResponseEntity<Map<String, String>> register(@RequestBody @Valid RegisterRequest request) {
-		return authService.register(request);
+		authService.register(request);
+		return ResponseEntity.ok(Map.of("message", "註冊成功，驗證郵件已發送"));
 	}
 
 	// 檢查使用者email是否經過驗證

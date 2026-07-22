@@ -1,8 +1,12 @@
 # Staytion 後端專案稽核報告
 
-> **撰寫日期**：2026-06-22  
+> **撰寫日期**：2026-06-22（狀態最後同步：2026-07-09）  
 > **稽核範圍**：`master` 分支，全部後端原始碼 + git 歷史記錄  
-> **嚴重程度標示**：🔴 High（高風險）｜🟡 Med（中風險）｜🟢 Low（低風險）
+> **嚴重程度標示**：🔴 High（高風險）｜🟡 Med（中風險）｜🟢 Low（低風險）  
+> **完成狀態標示**：✅ 已完成｜🚧 進行中（部分完成）｜⬜ 未開始
+>
+> 每個小節的表格第一列會標註目前狀態；詳細異動歷史見 [CHANGELOG.md](./CHANGELOG.md)。
+> 狀態是依照程式碼現況覆核後標註的，而非單純依照「有沒有寫過」判斷。
 
 ---
 
@@ -24,6 +28,7 @@
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ✅ 已完成（2026-07-09，Firebase Console 手動廢止，非 git 追蹤） — git 歷史已重建（目前僅 5 個 commit，稽核提到的舊 commit `86f20eb` 已不存在），本地 `src/main/resources/firebase/` 也已清空，且兩支私鑰皆已在 Firebase Console 廢止。 |
 | **位置** | `src/main/resources/firebase/staytion-serviceAccountKey.json`（本地檔案）+ git 歷史多個 commit |
 | **嚴重度** | 🔴 High |
 
@@ -44,6 +49,7 @@
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ✅ 已完成 — `.env` 已更換為高熵隨機值（base64，64+ bytes）。`.env` 不受 git 追蹤，故無對應 commit 可查。 |
 | **位置** | `.env`（第 4 行：`JWT_SECRET=mySecretKey123456789abcdefghijklmnopqrstuvwxyz`） |
 | **嚴重度** | 🟡 Med |
 
@@ -61,6 +67,7 @@
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ✅ 已完成（commit `40018c0`，2026-06-26） — `JwtAuthenticationFilter` 已恢復，`authorizeHttpRequests` 已正確設定公開/需驗證路徑。 |
 | **位置** | `src/main/java/com/example/demo/config/SecurityConfig.java:64-68` |
 | **嚴重度** | 🔴 High |
 
@@ -78,6 +85,7 @@
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ✅ 已完成 — 兩個檔案已從專案中刪除。這兩支檔案從未進入 git 歷史（本地未追蹤檔案），故無對應 commit。 |
 | **位置** | `FirebaseTestController.java`、`TestController.java` |
 | **嚴重度** | 🟡 Med |
 
@@ -93,6 +101,7 @@
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 — 仍有 14 處 `@CrossOrigin`，`WebSocketConfig` 仍為 `setAllowedOriginPatterns("*")`。 |
 | **位置** | `SecurityConfig.java:71-83`、`WebSocketConfig.java:21`、各 controller 的 `@CrossOrigin` |
 | **嚴重度** | 🟡 Med |
 
@@ -108,6 +117,7 @@
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ✅ 已完成（commit `b0345f5`，2026-07-01） — 改用 `Authentication` 解析當前使用者，移除 path 中的 `{userId}`。 |
 | **位置** | `ReviewController.java:114-121`（`deleteReview`） |
 | **嚴重度** | 🔴 High |
 
@@ -125,6 +135,7 @@
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | 🚧 進行中（2026-07-23 更新） — `loginWithPassword` 已改為回傳 `String` 並改拋 `InvalidCredentialsException`/`EmailNotVerifiedException`。`register` 已改為回傳 `void` 並改拋 `DuplicateEmailException`（409，已於 `GlobalExceptionHandler` 補上對應 handler），同時新增 `@Transactional` 確保寄信失敗時使用者資料一併 rollback。`handleGoogleLogin`、`sendResetPasswordEmail`、`resetPassword` 三個方法仍回傳 `ResponseEntity`。 |
 | **位置** | `AuthService.java`（所有方法） |
 | **嚴重度** | 🟡 Med |
 
@@ -140,6 +151,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 — `searchHotels()` 第一行仍是 `hotelRepository.findAll()`。 |
 | **位置** | `HotelServiceImpl.java:43-45`（`searchHotels` 方法） |
 | **嚴重度** | 🔴 High |
 
@@ -155,6 +167,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | 🚧 進行中（commit `378597c`，2026-07-09，隨 §2.1 一併處理） — `AuthController` 已移除 `UserRepository` 注入。`UserController` 仍直接注入 `UserRepository`（第 37 行），尚未處理。 |
 | **位置** | `AuthController.java`（注入 `UserRepository`）、`UserController.java`（注入 `UserRepository`） |
 | **嚴重度** | 🟡 Med |
 
@@ -170,6 +183,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 — `register()` 仍先 `save()` 再呼叫 `FirebaseAuth`，無 `@Transactional`。 |
 | **位置** | `AuthService.java:81-114`（`register` 方法） |
 | **嚴重度** | 🟡 Med |
 
@@ -187,6 +201,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 |
 | **位置** | 所有 Entity：`User.java`、`Hotel.java`、`Review.java`、`Order.java` 等 |
 | **嚴重度** | 🟢 Low（學術層面，初級職位可接受） |
 
@@ -202,6 +217,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | 🚧 進行中（commit `e068d79`，2026-07-02） — 全部 21 個 Service 類別已改為建構子注入（`OrderService.java` 除外，該檔為死碼待 §4.3 一併刪除）。**20 個 Controller 仍為 `@Autowired` 欄位注入，尚未開始**；`JwtAuthenticationFilter` 的 `userRepository` 也仍未宣告 `final`。 |
 | **位置** | `ReviewService.java`、`ChatRoomService.java`、`HotelServiceImpl.java`、`UserService.java`、`AuthService.java`、`BookingService.java`、`SecurityConfig.java`、`AuthController.java`（混合）等 |
 | **嚴重度** | 🟡 Med |
 
@@ -223,6 +239,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | 🚧 進行中（commit `378597c`，2026-07-09） — 已解除註解啟用，共 4 個 `@ExceptionHandler`。重複樣板尚未抽成 helper method（使用者已評估決定暫緩，見下方補充）。 |
 | **位置** | `exception/GlobalExceptionHandler.java`（整個檔案被 `//` 註解） |
 | **嚴重度** | 🟡 Med |
 
@@ -242,6 +259,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 |
 | **位置** | `FavoriteService`（有 Interface）vs. `ReviewService`、`ChatRoomService`、`UserService`（無 Interface） |
 | **嚴重度** | 🟢 Low |
 
@@ -259,6 +277,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 |
 | **位置** | `com.example.demo`（全部原始碼） |
 | **嚴重度** | 🟢 Low（但面試時會被問到） |
 
@@ -274,6 +293,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 |
 | **位置** | `ArvinHotelService.java`、`ArvinHotelController.java`、`ArvinRoomTypeService.java`、`ArvinRoomTypeController.java` |
 | **嚴重度** | 🟡 Med（Portfolio 專案中非常不妥） |
 
@@ -289,6 +309,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | 🚧 進行中 — `GlobalExceptionHandler.java` 已隨 §3.3 解除註解、`SecurityConfig.java` 舊 filterChain 也已隨 §1.3 清除。**`OrderService.java`（整檔）、`exception/JwtAuthException.java`（空類別死碼）、`BookingService.updateBooking` 內約 40 行註解區塊仍未清理**。 |
 | **位置** | `OrderService.java`（整個檔案被註解）、`GlobalExceptionHandler.java`（整個檔案被註解）、`BookingService.java:183-222`（大塊 updateBooking 邏輯被註解）、`SecurityConfig.java:23-62`（舊的 filterChain 被註解） |
 | **嚴重度** | 🟡 Med |
 
@@ -306,6 +327,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 — 目前仍有 16 個檔案含 `System.out.println`，包含優先度最高的 `JwtAuthenticationFilter.java:44`（明碼列印完整 JWT token）。 |
 | **位置** | 全 codebase 共 69 處（`grep -rn "System.out.println"` 結果） |
 | **嚴重度** | 🟡 Med |
 
@@ -323,6 +345,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 |
 | **位置** | `dto/` 根目錄（平面放置）vs. `dto/request/`、`dto/response/` 子目錄 |
 | **嚴重度** | 🟢 Low |
 
@@ -338,6 +361,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 — 複查後 bug 仍在：`endOfDay` 有算但第 174 行仍傳入 `endDate`。 |
 | **位置** | `ReviewService.java:175-179`（`searchReviewsForHost` 方法） |
 | **嚴重度** | 🟡 Med |
 
@@ -353,6 +377,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 |
 | **位置** | `FirebaseConfig.java:8`（`import javax.annotation.PostConstruct`） |
 | **嚴重度** | 🟡 Med |
 
@@ -370,6 +395,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 |
 | **位置** | `HotelServiceImpl.java`、`FavoriteServiceImpl.java:64-97` |
 | **嚴重度** | 🔴 High |
 
@@ -389,6 +415,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 — `Order.java` 仍為 MySQL `ENUM` columnDefinition。 |
 | **位置** | `Order.java:32`（`columnDefinition`）、`HotelRepository.java:34-42`（native query） |
 | **嚴重度** | 🔴 High（遷移到 PostgreSQL 前必須修） |
 
@@ -416,6 +443,7 @@ MySQL 中 boolean 值用 `0/1` 表示，PostgreSQL 要求 `= true`（或 `IS TRU
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 — `pom.xml` 尚未加入 Flyway 依賴。 |
 | **位置** | `pom.xml`（未引入任何 migration 依賴） |
 | **嚴重度** | 🟡 Med |
 
@@ -428,6 +456,8 @@ MySQL 中 boolean 值用 `0/1` 表示，PostgreSQL 要求 `= true`（或 `IS TRU
 ---
 
 ### 5.4 MySQL → PostgreSQL 遷移全面評估
+
+**狀態**：⬜ 未開始（整個 Stage 3 尚未啟動）
 
 這是一個有明確學習目標的重構項目，以下是遷移時需要處理的所有差異：
 
@@ -457,6 +487,7 @@ MySQL 中 boolean 值用 `0/1` 表示，PostgreSQL 要求 `= true`（或 `IS TRU
 
 | 項目 | 內容 |
 |------|------|
+| **狀態** | ⬜ 未開始 |
 | **位置** | 各 Entity（未在 `@Table` 中宣告索引） |
 | **嚴重度** | 🟢 Low（資料量小時不明顯） |
 
@@ -472,12 +503,14 @@ MySQL 中 boolean 值用 `0/1` 表示，PostgreSQL 要求 `= true`（或 `IS TRU
 
 ### Firebase 整合現狀
 
+**狀態**：🚧 進行中（2026-07-23 更新） — 方向已選定「選項 B：移除 Firebase」，執行到一半。已完成：debug controller 與根目錄測試檔案清除、`loginWithPassword` 已不再呼叫 Firebase、`register` 已不再呼叫 Firebase（改為 `JwtService.createEmailVerificationToken()` 產生本地驗證信 token，並新增 `app.email.verify.url` 設定與對應的驗證連結，驗證信寄送流程改走 `mailService.sendHtmlMail()`）。**尚未完成**：`handleGoogleLogin`/`sendResetPasswordEmail`/`resetPassword` 中 `handleGoogleLogin` 仍呼叫 `FirebaseService`，`pom.xml` 仍保留 `firebase-admin`、`google-api-client`、`spring-boot-starter-oauth2-client` 依賴，`AuthController.googleLogin()` 仍未驗證 Google ID Token（見下方「未完成/有問題的部分」，此為未修的安全漏洞）；`AuthController` 的 `/api/auth/resend-verification`、`/api/auth/check-email-verified` 也仍直接呼叫 `FirebaseAuth`，尚未改用本地驗證邏輯。
+
 **已完成的部分**：
 - `FirebaseConfig`：讀取 service account JSON，初始化 `FirebaseApp`（有效，但需要本地金鑰檔案）
-- `FirebaseService`：`createFirebaseUser()` 和 `deleteFirebaseUser()` 方法（可呼叫）
-- `AuthService.register()`：註冊時同步在 Firebase 建立帳號並寄驗證信
-- `AuthService.loginWithPassword()`：登入時檢查 Firebase email 驗證狀態
-- `AuthController`：`/api/auth/resend-verification`、`/api/auth/check-email-verified`（直接呼叫 Firebase）
+- `FirebaseService`：`createFirebaseUser()` 和 `deleteFirebaseUser()` 方法（`handleGoogleLogin` 仍在使用）
+- `AuthService.loginWithPassword()`：已不再檢查 Firebase email 驗證狀態，改用本地 `User.emailVerified` 欄位
+- `AuthService.register()`：✅ 已不再呼叫 Firebase，改為本地產生帶 `purpose` claim 的驗證信 token 並寄送本地驗證連結
+- `AuthController`：`/api/auth/resend-verification`、`/api/auth/check-email-verified` 仍直接呼叫 Firebase（尚未跟進 `register` 的改法）
 
 **未完成/有問題的部分**：
 - **Google Sign-In 流程**：`AuthController.googleLogin()` 只是接收前端傳來的 `{email, firstName, lastName}`，完全沒有驗證這個資訊的真實性（沒有驗證 Google ID Token）。任何人都可以偽造 POST body 說「我是 admin@google.com」，系統就會建立帳號或直接登入——這是**嚴重的身份驗證漏洞**（若安全機制不是完全停用的話影響更大）。
@@ -500,6 +533,8 @@ MySQL 中 boolean 值用 `0/1` 表示，PostgreSQL 要求 `= true`（或 `IS TRU
 
 ### Google Maps 整合現狀
 
+**狀態**：⬜ 未開始（未有異動）
+
 **已完成的部分**：
 - `GeocodingService`：呼叫 Google Maps Geocoding API，將地址轉為經緯度（可獨立運作）
 - `AddressParserService`：解析地址字串（工具類）
@@ -520,70 +555,70 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 
 ### Stage 1：安全性與緊急修復（先完成，其他才有意義）
 
-| 任務 | 模式 | 學習價值 | 稽核編號 |
-|------|------|---------|---------|
-| 廢止 Firebase 私鑰，決定 BFG 清理歷史 | ⚡ Fix-it-faster | 低（操作性） | [§1.1](#11-firebase-私鑰仍存在-git-歷史中) |
-| 更換 JWT Secret 為高熵隨機值 | ⚡ Fix-it-faster | 低 | [§1.2](#12-本地-env-中的-jwt-secret-強度過低) |
-| 恢復 `JwtAuthenticationFilter` 並重啟 Security | 🎓 Learn-it-myself | **高**（核心 Spring Security 知識） | [§1.3](#13-所有-api-端點完全開放jwt-驗證被完整繞過) |
-| 修復 `deleteReview` 的身份驗證 | 🎓 Learn-it-myself | 高 | [§1.6](#16-刪除評論-api-未從-jwt-驗證身份) |
-| 刪除 `FirebaseTestController`、`TestController` | ⚡ Fix-it-faster | 低 | [§1.4](#14-debug-用控制器暴露在正式環境) |
-| 清理根目錄的測試 HTML、`bfg.jar`、`frontend/` | ⚡ Fix-it-faster | 低 | [§6](#6-未完成的第三方整合firebase--google-maps) |
+| 狀態 | 任務 | 模式 | 學習價值 | 稽核編號 |
+|------|------|------|---------|---------|
+| ✅ | 廢止 Firebase 私鑰，決定 BFG 清理歷史 | ⚡ Fix-it-faster | 低（操作性） | [§1.1](#11-firebase-私鑰仍存在-git-歷史中) |
+| ✅ | 更換 JWT Secret 為高熵隨機值 | ⚡ Fix-it-faster | 低 | [§1.2](#12-本地-env-中的-jwt-secret-強度過低) |
+| ✅ | 恢復 `JwtAuthenticationFilter` 並重啟 Security | 🎓 Learn-it-myself | **高**（核心 Spring Security 知識） | [§1.3](#13-所有-api-端點完全開放jwt-驗證被完整繞過) |
+| ✅ | 修復 `deleteReview` 的身份驗證 | 🎓 Learn-it-myself | 高 | [§1.6](#16-刪除評論-api-未從-jwt-驗證身份) |
+| ✅ | 刪除 `FirebaseTestController`、`TestController` | ⚡ Fix-it-faster | 低 | [§1.4](#14-debug-用控制器暴露在正式環境) |
+| ✅ | 清理根目錄的測試 HTML、`bfg.jar`、`frontend/` | ⚡ Fix-it-faster | 低 | [§6](#6-未完成的第三方整合firebase--google-maps) |
 
 ---
 
 ### Stage 2：DI 與架構清理
 
-| 任務 | 模式 | 學習價值 | 稽核編號 |
-|------|------|---------|---------|
-| 所有 Service 改為建構子注入（可用 Lombok） | 🎓 Learn-it-myself | **高**（面試必考） | [§3.2](#32-autowired-欄位注入field-injection) |
-| `AuthService` 移除 `ResponseEntity`，改拋 custom exception | 🎓 Learn-it-myself | **高**（分層架構概念） | [§2.1](#21-service-層回傳-responseentity職責錯誤) |
-| 啟用 `GlobalExceptionHandler`，統一錯誤回應格式 | 🎓 Learn-it-myself | 高 | [§3.3](#33-globalexceptionhandler-完全被註解) |
-| 移除 Controller 中的 Repository 直接存取 | 🎓 Learn-it-myself | 高 | [§2.3](#23-controller-直接存取-repository) |
-| 修復 `FirebaseConfig` 的 `javax` → `jakarta` import | ⚡ Fix-it-faster | 低 | [§4.7](#47-javaxannotation-vs-jakartaannotation) |
-| 修復 `ReviewService` 日期過濾 bug | ⚡ Fix-it-faster | 低 | [§4.6](#46-reviewservice-的日期過濾-bug) |
-| 統一 CORS 設定，移除分散的 `@CrossOrigin` | ⚡ Fix-it-faster | 低 | [§1.5](#15-cors-設定不一致websocket-完全開放) |
-| 刪除死碼（`OrderService.java`、大量 comment blocks） | ⚡ Fix-it-faster | 低 | [§4.3](#43-大量被註解的死碼) |
-| 替換 `System.out.println` 為 SLF4J Logger | ⚡ Fix-it-faster | 低（但面試表現重要） | [§4.4](#44-systemoutprintln-滿佈-production-程式碼) |
-| 整合 Arvin 系列到對應 class，刪除命名類別 | ⚡ Fix-it-faster | 低 | [§4.2](#42-隊友名字出現在類別名稱中) |
-| 重命名 package 為 `com.staytion.backend` | ⚡ Fix-it-faster | 低 | [§4.1](#41-package-名稱仍是-spring-initializr-預設值) |
+| 狀態 | 任務 | 模式 | 學習價值 | 稽核編號 |
+|------|------|------|---------|---------|
+| 🚧 | 所有 Service 改為建構子注入（可用 Lombok） | 🎓 Learn-it-myself | **高**（面試必考） | [§3.2](#32-autowired-欄位注入field-injection) |
+| 🚧 | `AuthService` 移除 `ResponseEntity`，改拋 custom exception | 🎓 Learn-it-myself | **高**（分層架構概念） | [§2.1](#21-service-層回傳-responseentity職責錯誤) |
+| 🚧 | 啟用 `GlobalExceptionHandler`，統一錯誤回應格式 | 🎓 Learn-it-myself | 高 | [§3.3](#33-globalexceptionhandler-完全被註解) |
+| 🚧 | 移除 Controller 中的 Repository 直接存取 | 🎓 Learn-it-myself | 高 | [§2.3](#23-controller-直接存取-repository) |
+| ⬜ | 修復 `FirebaseConfig` 的 `javax` → `jakarta` import | ⚡ Fix-it-faster | 低 | [§4.7](#47-javaxannotation-vs-jakartaannotation) |
+| ⬜ | 修復 `ReviewService` 日期過濾 bug | ⚡ Fix-it-faster | 低 | [§4.6](#46-reviewservice-的日期過濾-bug) |
+| ⬜ | 統一 CORS 設定，移除分散的 `@CrossOrigin` | ⚡ Fix-it-faster | 低 | [§1.5](#15-cors-設定不一致websocket-完全開放) |
+| 🚧 | 刪除死碼（`OrderService.java`、大量 comment blocks） | ⚡ Fix-it-faster | 低 | [§4.3](#43-大量被註解的死碼) |
+| ⬜ | 替換 `System.out.println` 為 SLF4J Logger | ⚡ Fix-it-faster | 低（但面試表現重要） | [§4.4](#44-systemoutprintln-滿佈-production-程式碼) |
+| ⬜ | 整合 Arvin 系列到對應 class，刪除命名類別 | ⚡ Fix-it-faster | 低 | [§4.2](#42-隊友名字出現在類別名稱中) |
+| ⬜ | 重命名 package 為 `com.staytion.backend` | ⚡ Fix-it-faster | 低 | [§4.1](#41-package-名稱仍是-spring-initializr-預設值) |
 
 ---
 
 ### Stage 3：資料庫設計優化 + MySQL → PostgreSQL 遷移
 
-| 任務 | 模式 | 學習價值 | 稽核編號 |
-|------|------|---------|---------|
-| 引入 Flyway，建立 baseline schema migration | 🎓 Learn-it-myself | **高**（重要業界工具） | [§5.3](#53-缺少-schema-migration-工具flyway--liquibase) |
-| 修復 `Order.status` 的 MySQL ENUM `columnDefinition` | 🎓 Learn-it-myself | 高（JPA 映射原理） | [§5.2](#52-mysql-專屬語法在-entity-中硬編碼) |
-| 修復 native query 中的 Boolean 語法 | ⚡ Fix-it-faster | 低 | [§5.2](#52-mysql-專屬語法在-entity-中硬編碼) |
-| 替換 JDBC driver 和 datasource URL | ⚡ Fix-it-faster | 低 | [§5.4](#54-mysql--postgresql-遷移全面評估) |
-| 修復 `HotelServiceImpl.searchHotels()` N+1 問題 | 🎓 Learn-it-myself | **高**（N+1 是面試熱點） | [§2.2](#22-搜尋邏輯載入全部資料到記憶體致命效能問題) / [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
-| 修復 `FavoriteServiceImpl.getFavoriteHotels()` N+1 | 🎓 Learn-it-myself | 高 | [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
-| 為常用查詢欄位加索引（Flyway migration） | 🎓 Learn-it-myself | 中（DB 設計概念） | [§5.5](#55-缺少索引可擴展性問題) |
-| 本地 Docker PostgreSQL 驗證遷移正確性 | 🎓 Learn-it-myself | **高**（實際動手體驗） | [§5.4](#54-mysql--postgresql-遷移全面評估) |
+| 狀態 | 任務 | 模式 | 學習價值 | 稽核編號 |
+|------|------|------|---------|---------|
+| ⬜ | 引入 Flyway，建立 baseline schema migration | 🎓 Learn-it-myself | **高**（重要業界工具） | [§5.3](#53-缺少-schema-migration-工具flyway--liquibase) |
+| ⬜ | 修復 `Order.status` 的 MySQL ENUM `columnDefinition` | 🎓 Learn-it-myself | 高（JPA 映射原理） | [§5.2](#52-mysql-專屬語法在-entity-中硬編碼) |
+| ⬜ | 修復 native query 中的 Boolean 語法 | ⚡ Fix-it-faster | 低 | [§5.2](#52-mysql-專屬語法在-entity-中硬編碼) |
+| ⬜ | 替換 JDBC driver 和 datasource URL | ⚡ Fix-it-faster | 低 | [§5.4](#54-mysql--postgresql-遷移全面評估) |
+| ⬜ | 修復 `HotelServiceImpl.searchHotels()` N+1 問題 | 🎓 Learn-it-myself | **高**（N+1 是面試熱點） | [§2.2](#22-搜尋邏輯載入全部資料到記憶體致命效能問題) / [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
+| ⬜ | 修復 `FavoriteServiceImpl.getFavoriteHotels()` N+1 | 🎓 Learn-it-myself | 高 | [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
+| ⬜ | 為常用查詢欄位加索引（Flyway migration） | 🎓 Learn-it-myself | 中（DB 設計概念） | [§5.5](#55-缺少索引可擴展性問題) |
+| ⬜ | 本地 Docker PostgreSQL 驗證遷移正確性 | 🎓 Learn-it-myself | **高**（實際動手體驗） | [§5.4](#54-mysql--postgresql-遷移全面評估) |
 
 ---
 
 ### Stage 4：決定未完成 API 整合的命運
 
-| 任務 | 模式 | 學習價值 | 稽核編號 |
-|------|------|---------|---------|
-| 選擇 Firebase 整合方向（保留/移除）並執行 | 🎓 Learn-it-myself | **高**（若保留：OAuth 流程設計） | [§6](#6-未完成的第三方整合firebase--google-maps) |
-| Google Sign-In 改為驗證 Firebase ID Token | 🎓 Learn-it-myself | **高**（安全性核心） | [§6](#6-未完成的第三方整合firebase--google-maps) |
-| 確認 Google Maps API Key 有效性，完善 GeocodingService 呼叫時機 | 🎓 Learn-it-myself | 中 | [§6](#6-未完成的第三方整合firebase--google-maps) |
-| 決定是否保留 OAuth2 Client（Spring Security）並與 JWT 整合 | 🎓 Learn-it-myself | **高** | [§6](#6-未完成的第三方整合firebase--google-maps) |
+| 狀態 | 任務 | 模式 | 學習價值 | 稽核編號 |
+|------|------|------|---------|---------|
+| 🚧 | 選擇 Firebase 整合方向（保留/移除）並執行 | 🎓 Learn-it-myself | **高**（若保留：OAuth 流程設計） | [§6](#6-未完成的第三方整合firebase--google-maps) |
+| ⬜ | Google Sign-In 改為驗證 Firebase ID Token | 🎓 Learn-it-myself | **高**（安全性核心） | [§6](#6-未完成的第三方整合firebase--google-maps) |
+| ⬜ | 確認 Google Maps API Key 有效性，完善 GeocodingService 呼叫時機 | 🎓 Learn-it-myself | 中 | [§6](#6-未完成的第三方整合firebase--google-maps) |
+| ⬜ | 決定是否保留 OAuth2 Client（Spring Security）並與 JWT 整合 | 🎓 Learn-it-myself | **高** | [§6](#6-未完成的第三方整合firebase--google-maps) |
 
 ---
 
 ### Stage 5：程式碼品質收尾（Portfolio 收尾）
 
-| 任務 | 模式 | 學習價值 | 稽核編號 |
-|------|------|---------|---------|
-| 補齊 DTO 分層，統一命名規則 | ⚡ Fix-it-faster | 低 | [§4.5](#45-dto-命名與分層不一致) |
-| 為 User Center 模組補單元測試 | 🎓 Learn-it-myself | **高**（面試必問） | — |
-| 整合 `AuthService` 的 Firebase 和本地帳號狀態一致性 | 🎓 Learn-it-myself | 高 | [§2.4](#24-auth-流程db-寫入與-firebase-建立無法原子性回滾) |
-| 為 Entity 加基礎業務邏輯（`order.cancel()`） | 🎓 Learn-it-myself | 中（DDD 入門） | [§3.1](#31-貧血領域模型anemic-domain-model) |
-| 撰寫 README，說明架構、啟動方式、技術選型理由 | ⚡ Fix-it-faster | 低（但 Portfolio 必需） | — |
+| 狀態 | 任務 | 模式 | 學習價值 | 稽核編號 |
+|------|------|------|---------|---------|
+| ⬜ | 補齊 DTO 分層，統一命名規則 | ⚡ Fix-it-faster | 低 | [§4.5](#45-dto-命名與分層不一致) |
+| ⬜ | 為 User Center 模組補單元測試 | 🎓 Learn-it-myself | **高**（面試必問） | — |
+| ⬜ | 整合 `AuthService` 的 Firebase 和本地帳號狀態一致性 | 🎓 Learn-it-myself | 高 | [§2.4](#24-auth-流程db-寫入與-firebase-建立無法原子性回滾) |
+| ⬜ | 為 Entity 加基礎業務邏輯（`order.cancel()`） | 🎓 Learn-it-myself | 中（DDD 入門） | [§3.1](#31-貧血領域模型anemic-domain-model) |
+| ⬜ | 撰寫 README，說明架構、啟動方式、技術選型理由 | ⚡ Fix-it-faster | 低（但 Portfolio 必需） | — |
 
 ---
 

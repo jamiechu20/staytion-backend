@@ -1,6 +1,8 @@
 package com.example.demo.service;
 
 import java.security.Key;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,18 +23,25 @@ public class JwtService {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    private final long EXP_TIME = 120 * 60 * 1000; // 120 分鐘
+    private static final long EXP_TIME = 2; // 120 分鐘
+    private static final String EMAIL_VERIFICATION_PURPOSE = "email-verification";
+    private static final long EMAIL_VERIFY_EXP_HOURS = 24;
     public String createToken(User user) {
         Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
-
 
 	    List<String> hotelNames = user.getHotels().stream()
 	        .map(Hotel::getHname)
 	        .collect(Collectors.toList());
 
         return Jwts.builder().setSubject(user.getEmail()).claim("id", user.getId()).claim("hotels", hotelNames).setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + EXP_TIME)).signWith(key, SignatureAlgorithm.HS256)
+                .setExpiration(Date.from(Instant.now().plus(EXP_TIME, ChronoUnit.HOURS))).signWith(key, SignatureAlgorithm.HS256)
                 .compact();
+    }
+    public String createEmailVerificationToken(User user) {
+        Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        return Jwts.builder().setSubject(user.getEmail()).claim("purpose", EMAIL_VERIFICATION_PURPOSE)
+                                .setIssuedAt(new Date()).setExpiration(Date.from(Instant.now().plus(EMAIL_VERIFY_EXP_HOURS, ChronoUnit.HOURS)))
+                                .signWith(key, SignatureAlgorithm.HS256).compact();
     }
 
     // 驗證連結 - token

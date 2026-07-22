@@ -52,6 +52,15 @@ public class GlobalExceptionHandler {
 		error.put("message", ex.getMessage());
 		return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
 	}
+	@ExceptionHandler(DuplicateEmailException.class)
+	public ResponseEntity<?> handleDuplicateEmailException(DuplicateEmailException ex) {
+		Map<String, Object> error = new HashMap<>();
+		error.put("timestamp", LocalDateTime.now());
+		error.put("status", HttpStatus.CONFLICT.value());
+		error.put("error", "Conflict");
+		error.put("message", ex.getMessage());
+		return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+	}
 
 //	@ExceptionHandler(JwtAuthException.class)
 //	public ResponseEntity<String> handleJwtException(JwtAuthException e) {

@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
 
+import com.example.demo.exception.DuplicateEmailException;
 import com.example.demo.exception.EmailNotVerifiedException;
 import com.example.demo.exception.InvalidCredentialsException;
 import lombok.RequiredArgsConstructor;
@@ -12,15 +13,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
-
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.entity.User;
 import com.example.demo.repository.UserRepository;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.UserRecord;
-import com.google.firebase.auth.UserRecord.CreateRequest;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +35,9 @@ public class AuthService {
 
 	@Value("${app.reset.password.url}")
 	private String resetPasswordUrl;
+
+    @Value("${app.email.verify.url}")
+    private String verifyEmailUrl;
 
     // 檢查 email 是否存在
     public boolean checkEmail(String email) {
@@ -57,13 +57,13 @@ public class AuthService {
         return jwtService.createToken(user);
     }
 
-    // 註冊
-    public ResponseEntity<Map<String, String>> register(RegisterRequest request) {
+    // 註冊帳號
+    @Transactional
+    public void register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email 已註冊");
+            throw new DuplicateEmailException("此Email已註冊帳號");
         }
 
-        // 1. 儲存本地用戶
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -73,25 +73,12 @@ public class AuthService {
         user.setCreatedAt(LocalDateTime.now());
         userRepository.save(user);
 
-        try {
-            // 2. 在 Firebase 建立帳號
-            CreateRequest firebaseRequest = new CreateRequest().setEmail(request.getEmail())
-                    .setPassword(request.getPassword());
+        String token = jwtService.createEmailVerificationToken(user);
+        String verifyLink = verifyEmailUrl + "?token=" + token;
+        String html = "<p>請點擊以下連結驗證信箱：</p><a href=\"" + verifyLink + "\">驗證信箱</a>";
+        String email = user.getEmail();
+        mailService.sendHtmlMail(email, "驗證信箱", html);
 
-            UserRecord firebaseUser = FirebaseAuth.getInstance().createUser(firebaseRequest);
-            System.out.println("Firebase user created: " + firebaseUser.getUid());
-
-			// 3. 產生驗證連結並寄信
-			String link = FirebaseAuth.getInstance().generateEmailVerificationLink(request.getEmail());
-			String html = "<p>請點擊以下連結完成帳號驗證：</p><a href=\"" + link + "\">驗證帳號</a>";
-			mailService.sendHtmlMail(request.getEmail(), "帳號驗證信", html);
-			System.out.println(link);
-
-        } catch (Exception e) {
-            throw new RuntimeException("Firebase 建立用戶或發送驗證信失敗: " + e.getMessage());
-        }
-
-        return ResponseEntity.ok(Map.of("message", "註冊成功，驗證郵件已發送"));
     }
 
     // 用於處理 Google 登入後的用戶資料
