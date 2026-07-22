@@ -53,3 +53,4 @@ src/main/java/com/example/demo/service/FakeDataService.java
 *.jar
 
 CLAUDE.md
+CHANGELOG.md
