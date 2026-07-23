@@ -90,7 +90,8 @@ public class AuthController {
 	@Operation(summary = "忘記密碼 - 發送重設密碼郵件", description = "用戶輸入註冊時的郵件地址，系統會發送重設密碼的郵件。")
 	@PostMapping("/auth/forgot-password")
 	public ResponseEntity<Map<String, String>> sendResetPasswordEmail(@RequestBody ForgotPasswordRequest request) {
-		return authService.sendResetPasswordEmail(request.getEmail());
+		authService.sendResetPasswordEmail(request.getEmail());
+		return ResponseEntity.ok(Map.of("message", "重設密碼郵件已發送"));
 	}
 
 	// 重設密碼

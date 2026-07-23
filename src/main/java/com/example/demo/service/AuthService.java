@@ -7,6 +7,7 @@ import java.util.Optional;
 import com.example.demo.exception.DuplicateEmailException;
 import com.example.demo.exception.EmailNotVerifiedException;
 import com.example.demo.exception.InvalidCredentialsException;
+import com.example.demo.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -107,22 +108,14 @@ public class AuthService {
     }
 
     // 發送重設密碼連結
-    public ResponseEntity<Map<String, String>> sendResetPasswordEmail(String email) {
+    public void sendResetPasswordEmail(String email) {
         Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            // 返回 404 錯誤，並將錯誤訊息包裝成 JSON 格式
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "該 email 不存在"));
-        }
-
-		User user = userOpt.get();
-		String token = jwtService.createToken(user); // JWT: 含 email、15 分鐘有效
-		String resetLink = resetPasswordUrl + "?token=" + token;
-		System.out.println(resetLink);
-		String html = "<p>請點擊以下連結重設密碼：</p><a href=\"" + resetLink + "\">重設密碼</a>";
-		mailService.sendHtmlMail(email, "重設密碼", html);
-
-        // 返回 200 OK，並將成功訊息包裝成 JSON 格式
-        return ResponseEntity.ok(Map.of("message", "重設密碼連結已寄出"));
+        userOpt.ifPresent(user -> {
+            String token = jwtService.createToken(user); // JWT: 含 email、15 分鐘有效
+            String resetLink = resetPasswordUrl + "?token=" + token;
+            String html = "<p>請點擊以下連結重設密碼：</p><a href=\"" + resetLink + "\">重設密碼</a>";
+            mailService.sendHtmlMail(email, "重設密碼", html);
+        });
     }
 
 	// 重設密碼

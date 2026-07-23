@@ -32,6 +32,15 @@ public class GlobalExceptionHandler {
 		error.put("message", ex.getMessage());
 		return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
 	}
+	@ExceptionHandler(UserNotFoundException.class)
+	public ResponseEntity<?> handleUserNotFound(UserNotFoundException ex) {
+		Map<String, Object> error = new HashMap<>();
+		error.put("timestamp", LocalDateTime.now());
+		error.put("status", HttpStatus.NOT_FOUND.value());
+		error.put("error", "Not Found");
+		error.put("message", ex.getMessage());
+		return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+	}
 
 	@ExceptionHandler(InvalidCredentialsException.class)
 	public ResponseEntity<?> handleInvalidCredentialsException(InvalidCredentialsException ex) {

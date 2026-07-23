@@ -135,7 +135,7 @@
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | 🚧 進行中（2026-07-23 更新） — `loginWithPassword` 已改為回傳 `String` 並改拋 `InvalidCredentialsException`/`EmailNotVerifiedException`。`register` 已改為回傳 `void` 並改拋 `DuplicateEmailException`（409，已於 `GlobalExceptionHandler` 補上對應 handler），同時新增 `@Transactional` 確保寄信失敗時使用者資料一併 rollback。`handleGoogleLogin`、`sendResetPasswordEmail`、`resetPassword` 三個方法仍回傳 `ResponseEntity`。 |
+| **狀態** | 🚧 進行中（2026-07-23 更新） — `loginWithPassword` 已改為回傳 `String` 並改拋 `InvalidCredentialsException`/`EmailNotVerifiedException`。`register` 已改為回傳 `void` 並改拋 `DuplicateEmailException`（409，已於 `GlobalExceptionHandler` 補上對應 handler），同時新增 `@Transactional` 確保寄信失敗時使用者資料一併 rollback。`sendResetPasswordEmail` 已改為回傳 `void`：找不到使用者時不拋例外、改用 `Optional.ifPresent()` 靜默略過寄信，`AuthController` 統一回傳同一句訊息 + 200（順帶修正下方補充提到的 email enumeration 風險），同時移除了原本印出完整 reset link 的 `System.out.println`。`handleGoogleLogin`、`resetPassword` 兩個方法仍回傳 `ResponseEntity`。 |
 | **位置** | `AuthService.java`（所有方法） |
 | **嚴重度** | 🟡 Med |
 
@@ -144,6 +144,8 @@
 
 **建議方向**：  
 Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller 捕捉例外並映射到適當的 HTTP Response。
+
+> **✅ 已修復（2026-07-23，隨 `sendResetPasswordEmail` 重構一併處理）**：原本「查無此 email 回 404」會洩漏帳號是否存在（email enumeration 風險）。現已改為：`AuthService.sendResetPasswordEmail()` 對「找不到使用者」不拋例外，而是用 `Optional.ifPresent()` 靜默略過寄信；`AuthController` 不論使用者存不存在，一律回傳同一句訊息「重設密碼郵件已發送」+ HTTP 200，外部無法區分兩種情況。
 
 ---
 
