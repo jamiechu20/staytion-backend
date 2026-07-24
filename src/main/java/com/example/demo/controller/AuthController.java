@@ -98,7 +98,8 @@ public class AuthController {
 	@Operation(summary = "重設密碼", description = "用戶提供重設密碼的 Token 和新密碼，進行密碼重設。")
 	@PostMapping("/auth/reset-password")
 	public ResponseEntity<Map<String, String>> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
-		return authService.resetPassword(request.getToken(), request.getNewPassword(), request.getConfirmPassword());
+		authService.resetPassword(request.getToken(), request.getNewPassword(), request.getConfirmPassword());
+		return ResponseEntity.ok(Map.of("message", "密碼已更新，請重新登入"));
 	}
 
 }

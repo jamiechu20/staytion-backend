@@ -135,7 +135,7 @@
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | 🚧 進行中（2026-07-23 更新） — `loginWithPassword` 已改為回傳 `String` 並改拋 `InvalidCredentialsException`/`EmailNotVerifiedException`。`register` 已改為回傳 `void` 並改拋 `DuplicateEmailException`（409，已於 `GlobalExceptionHandler` 補上對應 handler），同時新增 `@Transactional` 確保寄信失敗時使用者資料一併 rollback。`sendResetPasswordEmail` 已改為回傳 `void`：找不到使用者時不拋例外、改用 `Optional.ifPresent()` 靜默略過寄信，`AuthController` 統一回傳同一句訊息 + 200（順帶修正下方補充提到的 email enumeration 風險），同時移除了原本印出完整 reset link 的 `System.out.println`。`handleGoogleLogin`、`resetPassword` 兩個方法仍回傳 `ResponseEntity`。 |
+| **狀態** | 🚧 進行中（2026-07-24 更新） — `loginWithPassword` 已改為回傳 `String` 並改拋 `InvalidCredentialsException`/`EmailNotVerifiedException`。`register` 已改為回傳 `void` 並改拋 `DuplicateEmailException`（409，已於 `GlobalExceptionHandler` 補上對應 handler），同時新增 `@Transactional` 確保寄信失敗時使用者資料一併 rollback。`sendResetPasswordEmail` 已改為回傳 `void`：找不到使用者時不拋例外、改用 `Optional.ifPresent()` 靜默略過寄信，`AuthController` 統一回傳同一句訊息 + 200（順帶修正下方補充提到的 email enumeration 風險），同時移除了原本印出完整 reset link 的 `System.out.println`。**`resetPassword` 已改為回傳 `void`**：新增 `PasswordConfirmationMismatchException`（400，密碼與確認密碼不一致）、`UserNotFoundException`（404，沿用既有類別）、`InvalidTokenException`（401，新增，`JwtService.getEmailFromToken()` 同步改為只 catch `JwtException` 並轉譯成 `InvalidTokenException`、保留原始 cause），原本吞掉所有例外的 `catch (Exception e)` 已移除。`GlobalExceptionHandler` 補上 `PasswordConfirmationMismatchException`、`InvalidTokenException` 兩個 handler。`handleGoogleLogin` 仍回傳 `ResponseEntity`，是這一項剩下唯一未處理的方法。 |
 | **位置** | `AuthService.java`（所有方法） |
 | **嚴重度** | 🟡 Med |
 
@@ -146,6 +146,8 @@
 Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller 捕捉例外並映射到適當的 HTTP Response。
 
 > **✅ 已修復（2026-07-23，隨 `sendResetPasswordEmail` 重構一併處理）**：原本「查無此 email 回 404」會洩漏帳號是否存在（email enumeration 風險）。現已改為：`AuthService.sendResetPasswordEmail()` 對「找不到使用者」不拋例外，而是用 `Optional.ifPresent()` 靜默略過寄信；`AuthController` 不論使用者存不存在，一律回傳同一句訊息「重設密碼郵件已發送」+ HTTP 200，外部無法區分兩種情況。
+
+> **補充（2026-07-24 新增，處理 `resetPassword` 時發現）**：`JwtService.java` 裡除了 `getEmailFromToken()`（已改用 `InvalidTokenException`），`parseToken()`、`getUserIdFromToken()`、`extractUserIdFromAuthHeader()` 三個方法仍是原本的寫法——`catch (Exception e)` 或 `catch (JwtException e)` 之後直接 `throw new RuntimeException(...)`，沒有專屬例外型別，呼叫端也無法區別「token 失敗」跟其他未預期的錯誤。`getUserIdFromToken()` 裡還留著兩行 `System.out.println`（其中一行會印出完整 JWT claims），跟 §4.4 是同一類問題。這次重構範圍只涵蓋 `resetPassword()` 實際會呼叫到的 `getEmailFromToken()`，其餘三個方法留到下一輪 `JwtService` 專門處理時一併修。
 
 ---
 

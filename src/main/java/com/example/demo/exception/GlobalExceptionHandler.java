@@ -8,7 +8,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -69,6 +68,24 @@ public class GlobalExceptionHandler {
 		error.put("error", "Conflict");
 		error.put("message", ex.getMessage());
 		return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+	}
+	@ExceptionHandler(PasswordConfirmationMismatchException.class)
+	public ResponseEntity<?> handlePasswordConfirmationMismatchException(PasswordConfirmationMismatchException ex) {
+		Map<String, Object> error = new HashMap<>();
+		error.put("timestamp", LocalDateTime.now());
+		error.put("status", HttpStatus.BAD_REQUEST.value());
+		error.put("error", "Bad Request");
+		error.put("message", ex.getMessage());
+		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+	}
+	@ExceptionHandler(InvalidTokenException.class)
+	public ResponseEntity<?> handleInvalidTokenException(InvalidTokenException ex) {
+		Map<String, Object> error = new HashMap<>();
+		error.put("timestamp", LocalDateTime.now());
+		error.put("status", HttpStatus.UNAUTHORIZED.value());
+		error.put("error", "Unauthorized");
+		error.put("message", ex.getMessage());
+		return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
 	}
 
 //	@ExceptionHandler(JwtAuthException.class)

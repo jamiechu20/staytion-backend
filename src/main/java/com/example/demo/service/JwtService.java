@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.example.demo.exception.InvalidTokenException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -49,9 +50,9 @@ public class JwtService {
         try {
             Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
             Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
-            return claims.getSubject(); // email
-        } catch (Exception e) {
-            throw new RuntimeException("Token 無效或已過期");
+            return claims.getSubject();
+        } catch (JwtException e) {
+            throw new InvalidTokenException("Token 無效或已過期", e);
         }
     }
 

@@ -7,10 +7,10 @@ import java.util.Optional;
 import com.example.demo.exception.DuplicateEmailException;
 import com.example.demo.exception.EmailNotVerifiedException;
 import com.example.demo.exception.InvalidCredentialsException;
+import com.example.demo.exception.PasswordConfirmationMismatchException;
 import com.example.demo.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -119,25 +119,15 @@ public class AuthService {
     }
 
 	// 重設密碼
-	public ResponseEntity<Map<String, String>> resetPassword(String token, String newPassword, String confirmPassword) {
-		// 檢查新密碼和確認密碼是否一致
+	public void resetPassword(String token, String newPassword, String confirmPassword) {
 		if (!newPassword.equals(confirmPassword)) {
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "密碼與確認密碼不一致"));
+			throw new PasswordConfirmationMismatchException("新密碼與確認密碼不一致");
 		}
 
-		try {
-			String email = jwtService.getEmailFromToken(token);
-			User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("找不到使用者"));
-
-			user.setPassword(passwordEncoder.encode(newPassword));
-			userRepository.save(user);
-
-			// 返回成功訊息
-			return ResponseEntity.ok(Map.of("message", "密碼已更新，請重新登入！"));
-		} catch (Exception e) {
-			// 返回錯誤訊息
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "Token 錯誤或已過期"));
-		}
+        String email = jwtService.getEmailFromToken(token);
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new UserNotFoundException("找不到使用者"));
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
 	}
 
 }
