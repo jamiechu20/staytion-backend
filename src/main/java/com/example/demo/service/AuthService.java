@@ -1,9 +1,10 @@
 package com.example.demo.service;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.Optional;
 
+import com.example.demo.dto.GoogleUserInfo;
+import com.example.demo.dto.response.GoogleLoginResult;
 import com.example.demo.exception.DuplicateEmailException;
 import com.example.demo.exception.EmailNotVerifiedException;
 import com.example.demo.exception.InvalidCredentialsException;
@@ -11,7 +12,6 @@ import com.example.demo.exception.PasswordConfirmationMismatchException;
 import com.example.demo.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.example.demo.dto.LoginRequest;
@@ -32,7 +32,7 @@ public class AuthService {
 
 	private final JwtService jwtService;
 
-	private final FirebaseService firebaseService;
+    private final GoogleTokenVerifierService googleTokenVerifierService;
 
 	@Value("${app.reset.password.url}")
 	private String resetPasswordUrl;
@@ -83,10 +83,14 @@ public class AuthService {
     }
 
     // 用於處理 Google 登入後的用戶資料
-    public ResponseEntity<Map<String, Object>> handleGoogleLogin(String email, String firstName, String lastName) {
+    public GoogleLoginResult handleGoogleLogin(String idToken) {
+        GoogleUserInfo googleUserInfo = googleTokenVerifierService.verify(idToken);
+        String email = googleUserInfo.email();
+        String firstName = googleUserInfo.firstName();
+        String lastName = googleUserInfo.lastName();
         Optional<User> userOptional = userRepository.findByEmail(email);
         User user;
-
+        Boolean isNewUser = userOptional.isEmpty();
         if (userOptional.isPresent()) {
             user = userOptional.get();
         } else {
@@ -98,13 +102,9 @@ public class AuthService {
             userRepository.save(user);
         }
 
-        // Firebase 同步可選擇性抽出或加參數控制
-        firebaseService.createFirebaseUser(email, firstName, lastName);
-
         String token = jwtService.createToken(user);
 
-        return ResponseEntity.ok(Map.of("message",
-                userOptional.isPresent() ? "User already exists" : "New user created", "user", user, "token", token));
+        return new GoogleLoginResult(user, token, isNewUser);
     }
 
     // 發送重設密碼連結

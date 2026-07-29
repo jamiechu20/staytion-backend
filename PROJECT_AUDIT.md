@@ -135,7 +135,7 @@
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | 🚧 進行中（2026-07-24 更新） — `loginWithPassword` 已改為回傳 `String` 並改拋 `InvalidCredentialsException`/`EmailNotVerifiedException`。`register` 已改為回傳 `void` 並改拋 `DuplicateEmailException`（409，已於 `GlobalExceptionHandler` 補上對應 handler），同時新增 `@Transactional` 確保寄信失敗時使用者資料一併 rollback。`sendResetPasswordEmail` 已改為回傳 `void`：找不到使用者時不拋例外、改用 `Optional.ifPresent()` 靜默略過寄信，`AuthController` 統一回傳同一句訊息 + 200（順帶修正下方補充提到的 email enumeration 風險），同時移除了原本印出完整 reset link 的 `System.out.println`。**`resetPassword` 已改為回傳 `void`**：新增 `PasswordConfirmationMismatchException`（400，密碼與確認密碼不一致）、`UserNotFoundException`（404，沿用既有類別）、`InvalidTokenException`（401，新增，`JwtService.getEmailFromToken()` 同步改為只 catch `JwtException` 並轉譯成 `InvalidTokenException`、保留原始 cause），原本吞掉所有例外的 `catch (Exception e)` 已移除。`GlobalExceptionHandler` 補上 `PasswordConfirmationMismatchException`、`InvalidTokenException` 兩個 handler。`handleGoogleLogin` 仍回傳 `ResponseEntity`，是這一項剩下唯一未處理的方法。 |
+| **狀態** | ✅ 已完成（2026-07-30 更新） — `loginWithPassword` 已改為回傳 `String` 並改拋 `InvalidCredentialsException`/`EmailNotVerifiedException`。`register` 已改為回傳 `void` 並改拋 `DuplicateEmailException`（409，已於 `GlobalExceptionHandler` 補上對應 handler），同時新增 `@Transactional` 確保寄信失敗時使用者資料一併 rollback。`sendResetPasswordEmail` 已改為回傳 `void`：找不到使用者時不拋例外、改用 `Optional.ifPresent()` 靜默略過寄信，`AuthController` 統一回傳同一句訊息 + 200（順帶修正下方補充提到的 email enumeration 風險），同時移除了原本印出完整 reset link 的 `System.out.println`。`resetPassword` 已改為回傳 `void`：新增 `PasswordConfirmationMismatchException`（400，密碼與確認密碼不一致）、`UserNotFoundException`（404，沿用既有類別）、`InvalidTokenException`（401，新增，`JwtService.getEmailFromToken()` 同步改為只 catch `JwtException` 並轉譯成 `InvalidTokenException`、保留原始 cause），原本吞掉所有例外的 `catch (Exception e)` 已移除。**`handleGoogleLogin` 已改為回傳 `GoogleLoginResult`**（新增的 domain record，放在 `dto/response/`，內含 `user`/`token`/`isNewUser`），`AuthController.googleLogin()` 改為自行組裝 JSON 回應。至此 `AuthService` 六個方法全部不再回傳 `ResponseEntity`，本項完成。同一輪一併處理：新增 `GoogleTokenVerifierService`（驗證前端傳來的 Google ID Token 簽章與 audience，取代原本完全信任前端傳入 email/name 的做法，詳見 §6）、移除 `handleGoogleLogin` 內的 `firebaseService.createFirebaseUser(...)` 呼叫。`GlobalExceptionHandler` 補上 `PasswordConfirmationMismatchException`、`InvalidTokenException`、`InvalidGoogleTokenException` 三個 handler。 |
 | **位置** | `AuthService.java`（所有方法） |
 | **嚴重度** | 🟡 Med |
 
@@ -507,21 +507,23 @@ MySQL 中 boolean 值用 `0/1` 表示，PostgreSQL 要求 `= true`（或 `IS TRU
 
 ### Firebase 整合現狀
 
-**狀態**：🚧 進行中（2026-07-23 更新） — 方向已選定「選項 B：移除 Firebase」，執行到一半。已完成：debug controller 與根目錄測試檔案清除、`loginWithPassword` 已不再呼叫 Firebase、`register` 已不再呼叫 Firebase（改為 `JwtService.createEmailVerificationToken()` 產生本地驗證信 token，並新增 `app.email.verify.url` 設定與對應的驗證連結，驗證信寄送流程改走 `mailService.sendHtmlMail()`）。**尚未完成**：`handleGoogleLogin`/`sendResetPasswordEmail`/`resetPassword` 中 `handleGoogleLogin` 仍呼叫 `FirebaseService`，`pom.xml` 仍保留 `firebase-admin`、`google-api-client`、`spring-boot-starter-oauth2-client` 依賴，`AuthController.googleLogin()` 仍未驗證 Google ID Token（見下方「未完成/有問題的部分」，此為未修的安全漏洞）；`AuthController` 的 `/api/auth/resend-verification`、`/api/auth/check-email-verified` 也仍直接呼叫 `FirebaseAuth`，尚未改用本地驗證邏輯。
+**狀態**：🚧 進行中（2026-07-30 更新） — 方向已選定「選項 B：移除 Firebase」。`loginWithPassword`、`register`、`handleGoogleLogin` 三個方法都已不再呼叫 Firebase，Auth 流程本身已完全脫離 Firebase 依賴。**尚未完成**：`pom.xml` 仍保留 `firebase-admin`、`google-api-client`、`spring-boot-starter-oauth2-client` 依賴（`google-api-client` 現在其實還在用，是 `GoogleTokenVerifierService` 拿來驗證 ID Token；`firebase-admin`、`spring-boot-starter-oauth2-client` 才是真正可以移除的）；`AuthController` 的 `/api/auth/resend-verification`、`/api/auth/check-email-verified` 也仍直接呼叫 `FirebaseAuth`，尚未改用本地驗證邏輯。
 
 **已完成的部分**：
-- `FirebaseConfig`：讀取 service account JSON，初始化 `FirebaseApp`（有效，但需要本地金鑰檔案）
-- `FirebaseService`：`createFirebaseUser()` 和 `deleteFirebaseUser()` 方法（`handleGoogleLogin` 仍在使用）
+- `FirebaseConfig`：讀取 service account JSON，初始化 `FirebaseApp`（有效，但需要本地金鑰檔案；已無任何 Auth 流程依賴它，僅 `resend-verification`/`check-email-verified` 兩個 endpoint 還間接需要）
+- `FirebaseService`：`createFirebaseUser()`、`deleteFirebaseUser()` 方法，`AuthService` 已不再使用（`handleGoogleLogin` 於 2026-07-30 移除呼叫），僅 `UserService` 還在用
 - `AuthService.loginWithPassword()`：已不再檢查 Firebase email 驗證狀態，改用本地 `User.emailVerified` 欄位
-- `AuthService.register()`：✅ 已不再呼叫 Firebase，改為本地產生帶 `purpose` claim 的驗證信 token 並寄送本地驗證連結
-- `AuthController`：`/api/auth/resend-verification`、`/api/auth/check-email-verified` 仍直接呼叫 Firebase（尚未跟進 `register` 的改法）
+- `AuthService.register()`：已不再呼叫 Firebase，改為本地產生帶 `purpose` claim 的驗證信 token 並寄送本地驗證連結
+- **`AuthService.handleGoogleLogin()`（2026-07-30 完成）**：已不再呼叫 `FirebaseService.createFirebaseUser()`。**Google Sign-In 身份驗證漏洞已修復**——新增 `GoogleTokenVerifierService`，改為後端用 `google-api-client` 的 `GoogleIdTokenVerifier` 驗證前端傳來的 Google ID Token（簽章、audience 皆會核對，audience 沿用既有的 `GOOGLE_CLIENT_ID`，新增獨立的 `google.client.id` property key，不與下方仍未使用的 `spring.security.oauth2.client.registration.*` 死配置耦合），並檢查 `email_verified`。`AuthController.googleLogin()` 的 request body 也已從 `{email, firstName, lastName}` 改為只接收 `{idToken}`。
+- `AuthController`：`/api/auth/resend-verification`、`/api/auth/check-email-verified` 仍直接呼叫 Firebase（尚未跟進其餘方法的改法）
 
 **未完成/有問題的部分**：
-- **Google Sign-In 流程**：`AuthController.googleLogin()` 只是接收前端傳來的 `{email, firstName, lastName}`，完全沒有驗證這個資訊的真實性（沒有驗證 Google ID Token）。任何人都可以偽造 POST body 說「我是 admin@google.com」，系統就會建立帳號或直接登入——這是**嚴重的身份驗證漏洞**（若安全機制不是完全停用的話影響更大）。
 - **`FirebaseTestController`** 和 **`TestController`**：debug 用控制器遺留在正式程式碼中
 - 根目錄有大量測試 HTML 頁面：`firebase-google-signin.html`、`firebase-setup-test.html`、`test-google-login.html` 等，全部應移除
 - `bfg-1.14.0.jar` 遺留在根目錄
 - `frontend/` 資料夾不應在後端 repo 中
+
+> **補充（2026-07-30 新增，處理 §2.1 `handleGoogleLogin` 時發現）**：`spring-boot-starter-oauth2-client` 依賴 + `application.properties` 裡對應的 `spring.security.oauth2.client.registration.google.*` 設定，經確認**完全沒被使用**——`SecurityConfig` 沒有呼叫 `.oauth2Login()`，全專案沒有任何 `ClientRegistration`/`OAuth2User` 相關程式碼，這組是死配置。討論過改用 Google Identity Services（前端直接拿 ID Token，非導頁式 OAuth2 Authorization Code Flow）後決定沿用既有的 `GOOGLE_CLIENT_ID` 環境變數、但改用專屬的 `google.client.id` property key，不依賴這組死配置。是否移除這組依賴與設定，留到本項下方「執行」與「移除依賴」階段一併決定。
 
 > **✅ 方向已決定（2026-07-08）**：選擇**選項 B：移除 Firebase 整合**。決定於 Stage 2（§2.1 AuthService 重構）進行到一半時提前拍板，因為 `loginWithPassword`、`register`、`handleGoogleLogin` 三個方法都直接呼叫 `FirebaseAuth`，若先照舊邏輯把回傳型別改完再拆 Firebase，等於做兩次工。執行順序：先在 §2.1 這一輪重構中，把三個方法的 Firebase 呼叫換成本地邏輯（`User.emailVerified` 欄位已於同一輪加入），下方 Stage 4 的「執行」與「移除依賴」項目待 AuthService 邏輯穩定後再收尾（避免中途編譯不過）。
 
@@ -575,7 +577,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | 狀態 | 任務 | 模式 | 學習價值 | 稽核編號 |
 |------|------|------|---------|---------|
 | 🚧 | 所有 Service 改為建構子注入（可用 Lombok） | 🎓 Learn-it-myself | **高**（面試必考） | [§3.2](#32-autowired-欄位注入field-injection) |
-| 🚧 | `AuthService` 移除 `ResponseEntity`，改拋 custom exception | 🎓 Learn-it-myself | **高**（分層架構概念） | [§2.1](#21-service-層回傳-responseentity職責錯誤) |
+| ✅ | `AuthService` 移除 `ResponseEntity`，改拋 custom exception | 🎓 Learn-it-myself | **高**（分層架構概念） | [§2.1](#21-service-層回傳-responseentity職責錯誤) |
 | 🚧 | 啟用 `GlobalExceptionHandler`，統一錯誤回應格式 | 🎓 Learn-it-myself | 高 | [§3.3](#33-globalexceptionhandler-完全被註解) |
 | 🚧 | 移除 Controller 中的 Repository 直接存取 | 🎓 Learn-it-myself | 高 | [§2.3](#23-controller-直接存取-repository) |
 | ⬜ | 修復 `FirebaseConfig` 的 `javax` → `jakarta` import | ⚡ Fix-it-faster | 低 | [§4.7](#47-javaxannotation-vs-jakartaannotation) |
@@ -608,7 +610,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | 狀態 | 任務 | 模式 | 學習價值 | 稽核編號 |
 |------|------|------|---------|---------|
 | 🚧 | 選擇 Firebase 整合方向（保留/移除）並執行 | 🎓 Learn-it-myself | **高**（若保留：OAuth 流程設計） | [§6](#6-未完成的第三方整合firebase--google-maps) |
-| ⬜ | Google Sign-In 改為驗證 Firebase ID Token | 🎓 Learn-it-myself | **高**（安全性核心） | [§6](#6-未完成的第三方整合firebase--google-maps) |
+| ✅ | Google Sign-In 改為驗證 Google ID Token（選擇直接驗證，非透過 Firebase） | 🎓 Learn-it-myself | **高**（安全性核心） | [§6](#6-未完成的第三方整合firebase--google-maps) |
 | ⬜ | 確認 Google Maps API Key 有效性，完善 GeocodingService 呼叫時機 | 🎓 Learn-it-myself | 中 | [§6](#6-未完成的第三方整合firebase--google-maps) |
 | ⬜ | 決定是否保留 OAuth2 Client（Spring Security）並與 JWT 整合 | 🎓 Learn-it-myself | **高** | [§6](#6-未完成的第三方整合firebase--google-maps) |
 

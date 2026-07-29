@@ -87,6 +87,15 @@ public class GlobalExceptionHandler {
 		error.put("message", ex.getMessage());
 		return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
 	}
+	@ExceptionHandler(InvalidGoogleTokenException.class)
+	public ResponseEntity<?> handleInvalidGoogleTokenException(InvalidGoogleTokenException ex) {
+		Map<String, Object> error = new HashMap<>();
+		error.put("timestamp", LocalDateTime.now());
+		error.put("status", HttpStatus.UNAUTHORIZED.value());
+		error.put("error", "Unauthorized");
+		error.put("message", ex.getMessage());
+		return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+	}
 
 //	@ExceptionHandler(JwtAuthException.class)
 //	public ResponseEntity<String> handleJwtException(JwtAuthException e) {

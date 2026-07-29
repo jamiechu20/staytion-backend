@@ -2,6 +2,8 @@ package com.example.demo.controller;
 
 import java.util.Map;
 
+import com.example.demo.dto.response.GoogleLoginResult;
+import com.example.demo.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,12 +33,17 @@ public class AuthController {
 	// Google 登入
 	@PostMapping("/auth/google-login")
 	@Operation(summary = "Google登入")
-	public ResponseEntity<Map<String, Object>> googleLogin(@RequestBody Map<String, String> googleUserData) {
-		String email = googleUserData.get("email");
-		String firstName = googleUserData.get("firstName");
-		String lastName = googleUserData.get("lastName");
-
-		return authService.handleGoogleLogin(email, firstName, lastName);
+	public ResponseEntity<Map<String, Object>> googleLogin(@RequestBody Map<String, String> idToken) {
+		GoogleLoginResult googleLoginResult = authService.handleGoogleLogin(idToken.get("idToken"));
+		String token = googleLoginResult.token();
+		User user = googleLoginResult.user();
+		String message;
+		if (googleLoginResult.isNewUser()){
+			message = "New user created";
+		}else {
+			message = "User already exists";
+		}
+		return ResponseEntity.ok(Map.of("message", message,"user", user,"token", token));
 	}
 
 	// 檢查email是否存在
