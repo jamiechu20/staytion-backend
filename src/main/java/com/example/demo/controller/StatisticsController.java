@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,14 +15,15 @@ import com.example.demo.service.StatisticsService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/statistics")
 @Tag(name = "Admin Statistics Managment", description = "後台報表與統計 API")
 public class StatisticsController {
 
-	@Autowired
-	private StatisticsService service;
+	private final StatisticsService service;
 
 	@Operation(summary = "取得可用年份", description = "回傳目前資料中有訂單的所有年份（依 ownerId 過濾）", operationId = "getAvailableYears")
 	@GetMapping("/available-years")

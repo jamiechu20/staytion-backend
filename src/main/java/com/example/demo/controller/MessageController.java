@@ -12,7 +12,7 @@ import com.example.demo.service.JwtService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,24 +21,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/messages")
 public class MessageController {
-    @Autowired
-    private MessageRepository messageRepository;
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private HotelRepository hotelRepository;
-
-    @Autowired
-    private ChatRoomService chatRoomService;
-
-    @Autowired
-    private ChatRoomRepository chatRoomRepository;
-
-    @Autowired
-    private JwtService jwtService;
+    private final MessageRepository messageRepository;
+    private final UserRepository userRepository;
+    private final HotelRepository hotelRepository;
+    private final ChatRoomService chatRoomService;
+    private final ChatRoomRepository chatRoomRepository;
+    private final JwtService jwtService;
 
     @GetMapping
     public List<Message> getChatHistory(@RequestParam Long receiverId,

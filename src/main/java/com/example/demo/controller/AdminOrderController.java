@@ -5,18 +5,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.dto.response.OrderResponseDto;
 import com.example.demo.entity.Order;
@@ -24,25 +16,16 @@ import com.example.demo.entity.Payment;
 import com.example.demo.service.AdminOrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
+import lombok.RequiredArgsConstructor;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admins/orders")
 @CrossOrigin(origins = "http://127.0.0.1:5500")
 @Tag(name = "Admin Order Management", description = "後台訂單管理 API")
 public class AdminOrderController {
 
-    @Autowired
-    private AdminOrderService service;
+    private final AdminOrderService service;
 
 //	@GetMapping
 //	@Operation(summary = "取得所有訂單", operationId = "getAllOrdersForAdmin")

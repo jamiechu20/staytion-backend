@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import io.swagger.v3.oas.annotations.Operation;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,13 +20,12 @@ import com.example.demo.repository.CityRepository;
 import com.example.demo.repository.DistrictRepository;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api")
 @CrossOrigin(origins = "http://127.0.0.1:5500")
 public class LocationController {
-    @Autowired
-    private CityRepository cityRepository;
-    @Autowired
-    private DistrictRepository districtRepository;
+    private final CityRepository cityRepository;
+    private final DistrictRepository districtRepository;
 
     @Operation(
             summary = "查詢所有城市",

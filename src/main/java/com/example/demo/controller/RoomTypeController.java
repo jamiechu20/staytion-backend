@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.example.demo.entity.RoomType;
 import io.swagger.v3.oas.annotations.Operation;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,11 +12,11 @@ import com.example.demo.dto.RoomTypeDTO;
 import com.example.demo.service.RoomTypeService;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api")
 public class RoomTypeController {
 
-    @Autowired
-    private RoomTypeService roomTypeService;
+    private final RoomTypeService roomTypeService;
 
     @Operation(
             summary = "查詢所有房型",

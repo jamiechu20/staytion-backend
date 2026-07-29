@@ -4,18 +4,18 @@ import com.example.demo.dto.BookingRequest;
 import com.example.demo.dto.BookingResponse;
 import com.example.demo.service.BookingService;
 import io.swagger.v3.oas.annotations.Operation;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/bookings")
 public class BookingController {
 
-    @Autowired
-    private BookingService bookingService;
+    private final BookingService bookingService;
 
     @Operation(
             summary = "建立/新增訂單",

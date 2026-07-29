@@ -12,7 +12,7 @@ import com.example.demo.service.ChatRoomService;
 import com.example.demo.service.JwtService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -26,21 +26,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Controller
+@RequiredArgsConstructor
 public class ChatController {
-    @Autowired
-    private SimpMessagingTemplate messagingTemplate;
-    @Autowired
-    private ChatRoomRepository chatRoomRepository;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private HotelRepository hotelRepository;
-    @Autowired
-    private MessageRepository messageRepository;
-    @Autowired
-    private ChatRoomService chatRoomService;
-    @Autowired
-    private JwtService jwtService;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final ChatRoomRepository chatRoomRepository;
+    private final UserRepository userRepository;
+    private final HotelRepository hotelRepository;
+    private final MessageRepository messageRepository;
+    private final ChatRoomService chatRoomService;
+    private final JwtService jwtService;
 
     @MessageMapping("/send")
     @Transactional

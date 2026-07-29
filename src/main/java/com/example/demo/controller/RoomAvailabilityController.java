@@ -7,7 +7,7 @@ import com.example.demo.entity.RoomAvailability;
 import com.example.demo.service.JwtService;
 import com.example.demo.service.RoomAvailabilityService;
 import io.swagger.v3.oas.annotations.Operation;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,14 +15,12 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/rooms")
 public class RoomAvailabilityController {
 
-    @Autowired
-    private RoomAvailabilityService roomAvailabilityService;
-
-    @Autowired
-    private JwtService jwtService;
+    private final RoomAvailabilityService roomAvailabilityService;
+    private final JwtService jwtService;
 
     @Operation(
             summary = "查詢指定房型某天剩餘房間數",

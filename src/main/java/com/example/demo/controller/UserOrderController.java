@@ -1,6 +1,5 @@
 package com.example.demo.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
@@ -11,14 +10,15 @@ import com.example.demo.service.UserOrderService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/users/orders")
 @Tag(name = "User Order Management", description = "前台使用者訂單管理 API (應該會拿掉)")
 public class UserOrderController {
 
-	@Autowired
-	private UserOrderService service;
+	private final UserOrderService service;
 
 	@Operation(summary = "建立訂單", description = "使用者建立一筆新訂單，需提供入住日期、房型、付款方式等資訊", operationId = "createUserOrder")
 	@PostMapping

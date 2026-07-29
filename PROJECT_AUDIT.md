@@ -129,6 +129,22 @@
 
 ---
 
+### 1.7 EcpayController 硬編碼金流密鑰
+
+| 項目 | 內容 |
+|------|------|
+| **狀態** | ⬜ 未開始（2026-07-30 新發現，處理 §3.2 建構子注入時順帶看到） |
+| **位置** | `EcpayController.java:228-230` |
+| **嚴重度** | 🔴 High |
+
+**問題說明**：  
+`MERCHANT_ID`、`HASH_KEY`、`HASH_IV` 三個綠界金流簽章用的值直接寫死在原始碼裡（`private final String HASH_KEY = "pwFHCqoQZGmho4w6";` 等）。`MERCHANT_ID = 3002607` 是綠界官方公開的測試商店代號，本身不算洩漏；但 `HASH_KEY`/`HASH_IV` 若之後串接正式環境會換成真實金鑰，寫死在 commit 歷史中就等同永久外洩，跟 §1.1 Firebase 私鑰是同一類問題。
+
+**建議方向**：  
+改用 `@Value("${ecpay.hash-key}")` 之類的寫法從 `.env`/`application.properties` 讀取，並確認 `.gitignore` 已涵蓋這些設定檔。
+
+---
+
 ## 2. 架構與系統設計
 
 ### 2.1 Service 層回傳 ResponseEntity（職責錯誤）
@@ -181,6 +197,8 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 **建議方向**：  
 移除 Controller 中的 Repository 注入，改為在對應的 Service 中提供方法。
 
+> **補充（2026-07-30 新增，處理 §3.2 時發現）**：本項「位置」清單原本只列 `AuthController`、`UserController`，但複查後發現 `ChatController`、`MessageController`、`LocationController` 也都直接注入 Repository（`ChatRoomRepository`、`UserRepository`、`HotelRepository`、`MessageRepository`、`CityRepository`、`DistrictRepository`）。這次只把它們改成建構子注入（§3.2 範圍），Repository 依賴本身尚未移除，待本項排入時一併處理。
+
 ---
 
 ### 2.4 Auth 流程：DB 寫入與 Firebase 建立無法原子性回滾
@@ -221,7 +239,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | 🚧 進行中（commit `e068d79`，2026-07-02） — 全部 21 個 Service 類別已改為建構子注入（`OrderService.java` 除外，該檔為死碼待 §4.3 一併刪除）。**20 個 Controller 仍為 `@Autowired` 欄位注入，尚未開始**；`JwtAuthenticationFilter` 的 `userRepository` 也仍未宣告 `final`。 |
+| **狀態** | 🚧 進行中（commit `e068d79`，2026-07-02；Controller 部分 2026-07-30 更新） — 全部 21 個 Service 類別已改為建構子注入（`OrderService.java` 除外，該檔為死碼待 §4.3 一併刪除）。**20 個 Controller 中，16 個已改為建構子注入 + `@RequiredArgsConstructor`**（`AmenityController`、`AdminOrderController`、`BookingController`、`ChatController`、`ChatRoomController`、`EcpayController`、`FavoriteController`、`HomeController`、`HotelController`、`LocationController`、`MessageController`、`ReviewController`、`RoomAvailabilityController`、`RoomTypeController`、`StatisticsController`、`UserController`、`UserOrderController`）。**剩餘 3 個維持原樣，皆為刻意跳過**：`ArvinHotelController`、`ArvinRoomTypeController`（待 §4.2 合併刪除時一併處理，避免白工）、`OrderController`（整檔死碼，待 §4.3 刪除）。`JwtAuthenticationFilter` 的 `userRepository` 複查後發現其實已經是 `final`（先前補充筆記已過時，可能在更早的修改中已一併處理），故此項已完成。 |
 | **位置** | `ReviewService.java`、`ChatRoomService.java`、`HotelServiceImpl.java`、`UserService.java`、`AuthService.java`、`BookingService.java`、`SecurityConfig.java`、`AuthController.java`（混合）等 |
 | **嚴重度** | 🟡 Med |
 
@@ -231,11 +249,11 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 **建議方向**：  
 所有類別統一改為建構子注入（配合 Lombok 的 `@RequiredArgsConstructor` 可大幅減少樣板程式碼）。
 
-> **補充（1.3 修復後新增）**：`JwtAuthenticationFilter.java:22` 的 `userRepository` 雖然已使用建構子注入，但欄位未宣告 `final`，無法保證不可變性。Stage 2 統一改建構子注入時一併修正。
-
 > **✅ 已修復（2026-07-03，隨 2.1 一併處理）**：`AuthController` 的混合注入（`MailService` 建構子注入 + `AuthService`/`UserRepository` 欄位注入）已統一改為建構子注入 + `@RequiredArgsConstructor`，並移除不再使用的 `UserRepository` 注入（對應 §2.3 的一部分）。至此本項清單列出的所有位置皆已完成。
 
-> **補充（2026-07-03 新增）**：本項原本的「位置」清單只點名了 `AuthController`，但複查後發現其餘 20 個 controller 全部都還是 `@Autowired` 欄位注入，從未被納入本項範圍。是否要在後續 Stage 2 收尾時一併統一改為建構子注入，待決定；先記錄於此避免遺漏。
+> **補充（2026-07-03 新增）**：本項原本的「位置」清單只點名了 `AuthController`，但複查後發現其餘 20 個 controller 全部都還是 `@Autowired` 欄位注入，從未被納入本項範圍。已於 2026-07-30 一併處理，見上方狀態。
+
+> **✅ 已修復（2026-07-30）**：16 個 Controller 已統一改為建構子注入 + `@RequiredArgsConstructor`。過程中一併發現：① `ChatController`、`MessageController`、`LocationController` 直接注入 Repository（跟 §2.3 是同一類問題，但 §2.3 目前只追蹤 `AuthController`/`UserController`，範圍記錄不完整，已在 §2.3 補記）；② `EcpayController.java` 有硬編碼的金流密鑰，已新增 §1.7 追蹤；③ `EcpayController.java` 前 215 行是整份被註解的舊版類別（死碼），已補進 §4.3。
 
 ---
 
@@ -324,6 +342,8 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 刪除完全被註解的檔案和函式；`BookingService` 中未完成的 `updateBooking` 邏輯如果還需要完成，應開 TODO comment 而非留著整塊 comment block。
 
 > **補充（2026-07-09 新增，處理 §3.3 時發現）**：`exception/JwtAuthException.java` 是個空類別（連 `extends RuntimeException` 都沒有），且全專案沒有任何地方真的拋出它，`GlobalExceptionHandler` 裡對應的 handler 也一直被註解著。屬於死碼，待本階段清理時一併刪除。
+
+> **補充（2026-07-30 新增，處理 §3.2 時發現）**：`EcpayController.java` 第 1-215 行是一整份被註解掉的舊版 `EcpayController` 類別（含舊的 import、舊的 Ecpay 串接邏輯），實際生效的類別從第 220 行才開始。屬於死碼，待本階段清理時一併刪除。
 
 ---
 
@@ -569,6 +589,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | ✅ | 修復 `deleteReview` 的身份驗證 | 🎓 Learn-it-myself | 高 | [§1.6](#16-刪除評論-api-未從-jwt-驗證身份) |
 | ✅ | 刪除 `FirebaseTestController`、`TestController` | ⚡ Fix-it-faster | 低 | [§1.4](#14-debug-用控制器暴露在正式環境) |
 | ✅ | 清理根目錄的測試 HTML、`bfg.jar`、`frontend/` | ⚡ Fix-it-faster | 低 | [§6](#6-未完成的第三方整合firebase--google-maps) |
+| ⬜ | 移除 `EcpayController` 硬編碼的金流密鑰，改用設定檔讀取 | ⚡ Fix-it-faster | 低 | [§1.7](#17-ecpaycontroller-硬編碼金流密鑰) |
 
 ---
 
@@ -576,7 +597,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 
 | 狀態 | 任務 | 模式 | 學習價值 | 稽核編號 |
 |------|------|------|---------|---------|
-| 🚧 | 所有 Service 改為建構子注入（可用 Lombok） | 🎓 Learn-it-myself | **高**（面試必考） | [§3.2](#32-autowired-欄位注入field-injection) |
+| 🚧 | 所有 Service/Controller 改為建構子注入（可用 Lombok） | 🎓 Learn-it-myself | **高**（面試必考） | [§3.2](#32-autowired-欄位注入field-injection) |
 | ✅ | `AuthService` 移除 `ResponseEntity`，改拋 custom exception | 🎓 Learn-it-myself | **高**（分層架構概念） | [§2.1](#21-service-層回傳-responseentity職責錯誤) |
 | 🚧 | 啟用 `GlobalExceptionHandler`，統一錯誤回應格式 | 🎓 Learn-it-myself | 高 | [§3.3](#33-globalexceptionhandler-完全被註解) |
 | 🚧 | 移除 Controller 中的 Repository 直接存取 | 🎓 Learn-it-myself | 高 | [§2.3](#23-controller-直接存取-repository) |

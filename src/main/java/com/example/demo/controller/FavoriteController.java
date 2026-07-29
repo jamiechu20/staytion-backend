@@ -6,23 +6,18 @@ import com.example.demo.entity.Favorite;
 import com.example.demo.service.FavoriteService;
 import com.example.demo.service.JwtService;
 import io.swagger.v3.oas.annotations.Operation;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/favorites")
 public class FavoriteController {
     private final FavoriteService favoriteService;
-
-    @Autowired
-    private JwtService jwtService;
-
-    public FavoriteController(FavoriteService favoriteService) {
-        this.favoriteService = favoriteService;
-    }
+    private final JwtService jwtService;
 
     // 加入收藏
     @PostMapping

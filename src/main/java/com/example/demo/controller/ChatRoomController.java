@@ -7,7 +7,7 @@ import com.example.demo.repository.ChatRoomRepository;
 import com.example.demo.service.ChatRoomService;
 import com.example.demo.service.JwtService;
 import io.swagger.v3.oas.annotations.Operation;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -15,16 +15,13 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/chatrooms")
 public class ChatRoomController {
 
-    @Autowired
-    private ChatRoomService chatRoomService;
-
-    @Autowired
-    private JwtService jwtService;
-    @Autowired
-    private ChatRoomRepository chatRoomRepository;
+    private final ChatRoomService chatRoomService;
+    private final JwtService jwtService;
+    private final ChatRoomRepository chatRoomRepository;
 
     @PostMapping("/find-or-create")
     @Operation(summary = "尋找或建立聊天室", description = "根據 senderId（由JWT解析userId）、receiverId 和 hotelId，尋找或建立聊天室並回傳 chatRoomId")

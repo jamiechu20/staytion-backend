@@ -11,8 +11,8 @@ import com.example.demo.service.ReviewService;
 import com.example.demo.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -23,17 +23,13 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api")
 //@CrossOrigin(origins = "http://127.0.0.1:5500")
 public class ReviewController {
-    @Autowired
-    private ReviewService reviewService;
-
-    @Autowired
-    private UserService userService;
-
-    @Autowired
-    private JwtService jwtService;
+    private final ReviewService reviewService;
+    private final UserService userService;
+    private final JwtService jwtService;
 
     // 房型詳情頁：取得某飯店的評論
     @GetMapping("/rooms/{hotelId}/reviews")

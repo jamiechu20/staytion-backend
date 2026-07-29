@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import io.swagger.v3.oas.annotations.Operation;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,12 +21,12 @@ import com.example.demo.entity.Hotel;
 import com.example.demo.service.HotelService;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/hotels")
 @CrossOrigin(origins = "http://127.0.0.1:5500")
 public class HotelController {
 
-    @Autowired
-    private HotelService hotelService;
+    private final HotelService hotelService;
 
     @Operation(
             summary = "查詢飯店列表",

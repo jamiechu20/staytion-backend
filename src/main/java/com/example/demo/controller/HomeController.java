@@ -3,7 +3,6 @@ package com.example.demo.controller;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,20 +22,17 @@ import com.example.demo.service.HistoryService;
 import com.example.demo.service.HotelService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import lombok.RequiredArgsConstructor;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api")
 @CrossOrigin(origins = "http://127.0.0.1:5500")
 public class HomeController {
 
-	@Autowired
-	private HistoryService historyService;
-
-	@Autowired
-	private HotelService hotelService;
-
-	@Autowired
-	private CityService cityService;
+	private final HistoryService historyService;
+	private final HotelService hotelService;
+	private final CityService cityService;
 
 	// 查詢搜尋紀錄
 	@Operation(summary = "查詢用戶的搜尋紀錄", description = "根據用戶 ID 查詢該用戶的所有搜尋紀錄")

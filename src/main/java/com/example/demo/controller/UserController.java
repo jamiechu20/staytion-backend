@@ -2,7 +2,6 @@ package com.example.demo.controller;
 
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -21,20 +20,17 @@ import com.example.demo.service.JwtService;
 import com.example.demo.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import lombok.RequiredArgsConstructor;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api")
-@CrossOrigin(origins = "http://127.0.0.1:5500")  
+@CrossOrigin(origins = "http://127.0.0.1:5500")
 public class UserController {
 
-	@Autowired
-	private JwtService jwtService;
-
-	@Autowired
-	private UserService userService;
-
-	@Autowired
-	private UserRepository userRepository;
+	private final JwtService jwtService;
+	private final UserService userService;
+	private final UserRepository userRepository;
 
 	// 使用token取得個人資料
 	@Operation(summary = "取得使用者個人資料", description = "通過 Token 獲取使用者個人資料")

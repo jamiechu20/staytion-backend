@@ -199,7 +199,7 @@ import com.example.demo.service.PaymentService;
 import com.example.demo.util.EcpayUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
@@ -214,16 +214,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/payments")
 @CrossOrigin(origins = {"https://yen-ward-plates-visitor.trycloudflare.com", "https://youth-exclude-cartridge-isa.trycloudflare.com", "http://127.0.0.1:5500", "http://127.0.0.1:5501",
         "https://payment-stage.ecpay.com.tw"}) // 測試方便，正式環境請換為明確來源
 public class EcpayController {
 
-    @Autowired
-    private BookingService bookingService;
-
-    @Autowired
-    private PaymentService paymentService;
+    private final BookingService bookingService;
+    private final PaymentService paymentService;
 
     private final String MERCHANT_ID = "3002607";
     private final String HASH_KEY = "pwFHCqoQZGmho4w6";
