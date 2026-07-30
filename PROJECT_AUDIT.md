@@ -261,7 +261,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | 🚧 進行中（commit `378597c`，2026-07-09） — 已解除註解啟用，共 4 個 `@ExceptionHandler`。重複樣板尚未抽成 helper method（使用者已評估決定暫緩，見下方補充）。 |
+| **狀態** | ✅ 已完成（commit `378597c`，2026-07-09 解除註解啟用；2026-07-31 補完重複樣板重構） — 已解除註解啟用，隨 §2.1 陸續新增例外類別後共 9 個 `@ExceptionHandler`。2026-07-31：9 個 handler 原本重複的 `HashMap` 組裝邏輯已抽成 private helper `buildErrorResponse(Exception ex, HttpStatus status, String errorType)`，每個 handler 現在只剩一行 `return buildErrorResponse(...)`，行為與重構前一致。 |
 | **位置** | `exception/GlobalExceptionHandler.java`（整個檔案被 `//` 註解） |
 | **嚴重度** | 🟡 Med |
 
@@ -273,7 +273,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 > **✅ 部分已修復（2026-07-09，隨 §2.1 Auth 重構一併處理）**：`GlobalExceptionHandler` 已解除註解啟用，並新增 `InvalidCredentialsException`（401）、`EmailNotVerifiedException`（403）的映射，與既有的 `HotelNotFoundException`、`RoomTypeNotFoundException`（皆 404）並列。
 
-> **待辦（2026-07-09 新增）**：目前 4 個 `@ExceptionHandler` 方法都是重複的樣板（各自建立 `HashMap`、塞入相同的 4 個 key，只有 status/error 字串/例外型別不同）。可以抽一個 private helper method（例如 `buildErrorResponse(HttpStatus status, String error, String message)`）收斂重複邏輯。使用者評估後決定不急著做，留到之後有空時處理，不影響目前 Auth 重構進度。
+> **✅ 已修復（2026-07-31）**：原本待辦的重複樣板已收斂——新增 private helper `buildErrorResponse(Exception ex, HttpStatus status, String errorType)`，統一組裝 `timestamp`/`status`/`error`/`message` 四個 key，9 個 `@ExceptionHandler` 都改為呼叫這個 helper。之後若要調整錯誤回應格式（例如加欄位），只需要改一個地方。
 
 ---
 
@@ -599,7 +599,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 |------|------|------|---------|---------|
 | 🚧 | 所有 Service/Controller 改為建構子注入（可用 Lombok） | 🎓 Learn-it-myself | **高**（面試必考） | [§3.2](#32-autowired-欄位注入field-injection) |
 | ✅ | `AuthService` 移除 `ResponseEntity`，改拋 custom exception | 🎓 Learn-it-myself | **高**（分層架構概念） | [§2.1](#21-service-層回傳-responseentity職責錯誤) |
-| 🚧 | 啟用 `GlobalExceptionHandler`，統一錯誤回應格式 | 🎓 Learn-it-myself | 高 | [§3.3](#33-globalexceptionhandler-完全被註解) |
+| ✅ | 啟用 `GlobalExceptionHandler`，統一錯誤回應格式 | 🎓 Learn-it-myself | 高 | [§3.3](#33-globalexceptionhandler-完全被註解) |
 | 🚧 | 移除 Controller 中的 Repository 直接存取 | 🎓 Learn-it-myself | 高 | [§2.3](#23-controller-直接存取-repository) |
 | ⬜ | 修復 `FirebaseConfig` 的 `javax` → `jakarta` import | ⚡ Fix-it-faster | 低 | [§4.7](#47-javaxannotation-vs-jakartaannotation) |
 | ⬜ | 修復 `ReviewService` 日期過濾 bug | ⚡ Fix-it-faster | 低 | [§4.6](#46-reviewservice-的日期過濾-bug) |

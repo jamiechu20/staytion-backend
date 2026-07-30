@@ -14,89 +14,53 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(HotelNotFoundException.class)
 	public ResponseEntity<?> handleHotelNotFound(HotelNotFoundException ex) {
-		Map<String, Object> error = new HashMap<>();
-		error.put("timestamp", LocalDateTime.now());
-		error.put("status", HttpStatus.NOT_FOUND.value());
-		error.put("error", "Not Found");
-		error.put("message", ex.getMessage());
-		return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		return buildErrorResponse(ex, HttpStatus.NOT_FOUND, "Not Found");
 	}
 
 	@ExceptionHandler(RoomTypeNotFoundException.class)
 	public ResponseEntity<?> handleRoomTypeNotFound(RoomTypeNotFoundException ex) {
-		Map<String, Object> error = new HashMap<>();
-		error.put("timestamp", LocalDateTime.now());
-		error.put("status", HttpStatus.NOT_FOUND.value());
-		error.put("error", "Not Found");
-		error.put("message", ex.getMessage());
-		return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		return buildErrorResponse(ex, HttpStatus.NOT_FOUND, "Not Found");
 	}
 	@ExceptionHandler(UserNotFoundException.class)
 	public ResponseEntity<?> handleUserNotFound(UserNotFoundException ex) {
-		Map<String, Object> error = new HashMap<>();
-		error.put("timestamp", LocalDateTime.now());
-		error.put("status", HttpStatus.NOT_FOUND.value());
-		error.put("error", "Not Found");
-		error.put("message", ex.getMessage());
-		return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+		return buildErrorResponse(ex, HttpStatus.NOT_FOUND, "Not Found");
 	}
 
 	@ExceptionHandler(InvalidCredentialsException.class)
 	public ResponseEntity<?> handleInvalidCredentialsException(InvalidCredentialsException ex) {
-		Map<String, Object> error = new HashMap<>();
-		error.put("timestamp", LocalDateTime.now());
-		error.put("status", HttpStatus.UNAUTHORIZED.value());
-		error.put("error", "Unauthorized");
-		error.put("message", ex.getMessage());
-		return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+		return buildErrorResponse(ex, HttpStatus.UNAUTHORIZED, "Unauthorized");
 	}
 
 	@ExceptionHandler(EmailNotVerifiedException.class)
 	public ResponseEntity<?> handleEmailNotVerifiedException(EmailNotVerifiedException ex) {
-		Map<String, Object> error = new HashMap<>();
-		error.put("timestamp", LocalDateTime.now());
-		error.put("status", HttpStatus.FORBIDDEN.value());
-		error.put("error", "Forbidden");
-		error.put("message", ex.getMessage());
-		return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+		return buildErrorResponse(ex, HttpStatus.FORBIDDEN, "Forbidden");
 	}
 	@ExceptionHandler(DuplicateEmailException.class)
 	public ResponseEntity<?> handleDuplicateEmailException(DuplicateEmailException ex) {
-		Map<String, Object> error = new HashMap<>();
-		error.put("timestamp", LocalDateTime.now());
-		error.put("status", HttpStatus.CONFLICT.value());
-		error.put("error", "Conflict");
-		error.put("message", ex.getMessage());
-		return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+		return buildErrorResponse(ex, HttpStatus.CONFLICT, "Conflict");
 	}
 	@ExceptionHandler(PasswordConfirmationMismatchException.class)
 	public ResponseEntity<?> handlePasswordConfirmationMismatchException(PasswordConfirmationMismatchException ex) {
-		Map<String, Object> error = new HashMap<>();
-		error.put("timestamp", LocalDateTime.now());
-		error.put("status", HttpStatus.BAD_REQUEST.value());
-		error.put("error", "Bad Request");
-		error.put("message", ex.getMessage());
-		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+		return buildErrorResponse(ex, HttpStatus.BAD_REQUEST, "Bad Request");
 	}
 	@ExceptionHandler(InvalidTokenException.class)
 	public ResponseEntity<?> handleInvalidTokenException(InvalidTokenException ex) {
-		Map<String, Object> error = new HashMap<>();
-		error.put("timestamp", LocalDateTime.now());
-		error.put("status", HttpStatus.UNAUTHORIZED.value());
-		error.put("error", "Unauthorized");
-		error.put("message", ex.getMessage());
-		return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+		return buildErrorResponse(ex, HttpStatus.UNAUTHORIZED, "Unauthorized");
+
 	}
 	@ExceptionHandler(InvalidGoogleTokenException.class)
 	public ResponseEntity<?> handleInvalidGoogleTokenException(InvalidGoogleTokenException ex) {
+		return buildErrorResponse(ex, HttpStatus.UNAUTHORIZED, "Unauthorized");
+
+	}
+	private ResponseEntity<?> buildErrorResponse(Exception ex, HttpStatus status, String errorType) {
 		Map<String, Object> error = new HashMap<>();
 		error.put("timestamp", LocalDateTime.now());
-		error.put("status", HttpStatus.UNAUTHORIZED.value());
-		error.put("error", "Unauthorized");
+		error.put("status", status.value());
+		error.put("error", errorType);
 		error.put("message", ex.getMessage());
-		return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+		return new ResponseEntity<>(error, status);
 	}
-
 //	@ExceptionHandler(JwtAuthException.class)
 //	public ResponseEntity<String> handleJwtException(JwtAuthException e) {
 //		return ResponseEntity.status(HttpStatus.FORBIDDEN).body("權限被拒：" + e.getMessage()); // 403
