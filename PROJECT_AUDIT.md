@@ -187,7 +187,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | 🚧 進行中（commit `378597c`，2026-07-09，隨 §2.1 一併處理） — `AuthController` 已移除 `UserRepository` 注入。`UserController` 仍直接注入 `UserRepository`（第 37 行），尚未處理。 |
+| **狀態** | 🚧 進行中（commit `378597c`，2026-07-09，隨 §2.1 一併處理；2026-08-01 更新） — `AuthController` 已移除 `UserRepository` 注入。`UserController` 已完成：新增 `UserService.getUserByEmail()`（找不到時拋 `UserNotFoundException`，`GlobalExceptionHandler` 已有對應 404 handler），`getProfile()` 改為呼叫該方法，`UserController` 的 `UserRepository` 欄位與 import 已移除。**`LocationController` 已完成**：新增 `LocationService`（`getAllCities()`、`getDistrictsByCity()`、`getAllDistricts()`、`searchLocations()`），新增 `dto/response/LocationOption.java`（record，含巢狀 `LocationType` enum，取代原本手動組 `Map<String,String>` 的做法），`LocationController` 四個方法皆已改為委派給 `LocationService`，`CityRepository`/`DistrictRepository` 注入與相關 import 已全部移除。**尚未處理**：`ChatController`、`MessageController` 仍直接注入 Repository（`ChatRoomRepository`、`UserRepository`、`HotelRepository`、`MessageRepository`），`MessageController` 對應的 Service 目前完全不存在，需要從零建立。 |
 | **位置** | `AuthController.java`（注入 `UserRepository`）、`UserController.java`（注入 `UserRepository`） |
 | **嚴重度** | 🟡 Med |
 
@@ -369,7 +369,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ⬜ 未開始 |
+| **狀態** | ⬜ 未開始（全專案命名/目錄整理仍未進行；下方 4.5.1 是隨手發現的獨立子問題，範圍較小已先修復） |
 | **位置** | `dto/` 根目錄（平面放置）vs. `dto/request/`、`dto/response/` 子目錄 |
 | **嚴重度** | 🟢 Low |
 
@@ -378,6 +378,22 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 **建議方向**：  
 統一用 `dto/request/` 和 `dto/response/` 分類，命名一律用 `XxxRequest` / `XxxResponse` 不加後綴 DTO/Dto。
+
+---
+
+### 4.5.1 Controller 直接回傳 User entity，洩漏 password hash（2026-08-01 新發現並已修復）
+
+| 項目 | 內容 |
+|------|------|
+| **狀態** | ✅ 已完成（2026-08-01，處理 §2.3 `UserController` 時順帶發現） — 新增 `dto/response/UserResponse.java`（record，含 `static factory` `from(User)`，只挑選 `id`/`firstName`/`lastName`/`email`/`tel`），`UserController.getProfile()`、`updateProfile()` 皆已改為回傳 `UserResponse` 而非 `User`。 |
+| **位置** | `UserController.java`（`getProfile()`、`updateProfile()`） |
+| **嚴重度** | 🟡 Med（敏感欄位外洩，但需先竊取有效 JWT 才能觸發，故非 🔴） |
+
+**問題說明**：  
+`User` entity 的 `password` 欄位（bcrypt hash）沒有 `@JsonIgnore` 或其他遮蔽機制，`getProfile()`、`updateProfile()` 原本直接把整個 `User` entity 序列化回傳，導致密碼 hash 一併外洩給前端（可在瀏覽器開發者工具的 Network 分頁看到）。這是「Controller 直接回傳 JPA entity 當 API 回應」的通例——entity 的欄位是資料庫層的關注點，不該跟 API contract 綁在一起，屬於 §4.5 DTO 分層問題的具體案例。
+
+**建議方向（已執行）**：  
+新增 Response DTO，只挑選 API 需要的欄位，用 static factory method 集中轉換邏輯，避免每個 Controller 各自手動組欄位。
 
 ---
 
@@ -601,6 +617,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | ✅ | `AuthService` 移除 `ResponseEntity`，改拋 custom exception | 🎓 Learn-it-myself | **高**（分層架構概念） | [§2.1](#21-service-層回傳-responseentity職責錯誤) |
 | ✅ | 啟用 `GlobalExceptionHandler`，統一錯誤回應格式 | 🎓 Learn-it-myself | 高 | [§3.3](#33-globalexceptionhandler-完全被註解) |
 | 🚧 | 移除 Controller 中的 Repository 直接存取 | 🎓 Learn-it-myself | 高 | [§2.3](#23-controller-直接存取-repository) |
+| ✅ | 修復 `UserController` 洩漏 `User` entity（含 password hash） | 🎓 Learn-it-myself | 高（DTO 分層、record 語言特性） | [§4.5.1](#451-controller-直接回傳-user-entity洩漏-password-hash2026-08-01-新發現並已修復) |
 | ⬜ | 修復 `FirebaseConfig` 的 `javax` → `jakarta` import | ⚡ Fix-it-faster | 低 | [§4.7](#47-javaxannotation-vs-jakartaannotation) |
 | ⬜ | 修復 `ReviewService` 日期過濾 bug | ⚡ Fix-it-faster | 低 | [§4.6](#46-reviewservice-的日期過濾-bug) |
 | ⬜ | 統一 CORS 設定，移除分散的 `@CrossOrigin` | ⚡ Fix-it-faster | 低 | [§1.5](#15-cors-設定不一致websocket-完全開放) |

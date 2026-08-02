@@ -82,7 +82,7 @@ public class AuthService {
 
     }
 
-    // 用於處理 Google 登入後的用戶資料
+    // Google 登入後的用戶資料
     public GoogleLoginResult handleGoogleLogin(String idToken) {
         GoogleUserInfo googleUserInfo = googleTokenVerifierService.verify(idToken);
         String email = googleUserInfo.email();
