@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import java.util.Map;
 
+import com.example.demo.dto.response.UserResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -15,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.UserUpdateRequest;
 import com.example.demo.entity.User;
-import com.example.demo.repository.UserRepository;
 import com.example.demo.service.JwtService;
 import com.example.demo.service.UserService;
 
@@ -30,41 +30,36 @@ public class UserController {
 
 	private final JwtService jwtService;
 	private final UserService userService;
-	private final UserRepository userRepository;
 
 	// 使用token取得個人資料
 	@Operation(summary = "取得使用者個人資料", description = "通過 Token 獲取使用者個人資料")
 	@GetMapping("/user/profile")
 	public ResponseEntity<?> getProfile(@RequestHeader(value = "Authorization", required = false) String authHeader) {
-		System.out.println("Authorization header: " + authHeader);
-
 		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Missing or invalid token");
 		}
-
 		String token = authHeader.substring(7);
-		System.out.println("Extracted token: " + token);
-
 		String email = jwtService.parseToken(token);
-		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("找不到使用者"));
-
-		return ResponseEntity.ok(user);
+		User user = userService.getUserByEmail(email);
+		UserResponse userResponse = UserResponse.from(user);
+		return ResponseEntity.ok(Map.of("user", userResponse));
 	}
 
 	// 更新使用者個人資料
 	@Operation(summary = "更新使用者個人資料", description = "使用者可以更新自己的個人資料，如名稱、密碼、電話等")
-	@PutMapping("/user/update-profile")
-	public ResponseEntity<User> updateProfile(@RequestHeader("Authorization") String token,
+	@PutMapping("/user/profile")
+	public ResponseEntity<?> updateProfile(@RequestHeader("Authorization") String token,
 			@RequestBody UserUpdateRequest request) {
 		String email = jwtService.parseToken(token.substring(7)); // 解析 token 獲取 email
 		User updatedUser = userService.updateUserProfile(email, request.getFirstName(), request.getLastName(),
 				request.getPassword(), request.getTel());
-		return ResponseEntity.ok(updatedUser);
+		UserResponse userResponse = UserResponse.from(updatedUser);
+		return ResponseEntity.ok(Map.of("user", userResponse));
 	}
 
 	// 刪除使用者
 	@Operation(summary = "刪除使用者帳戶", description = "通過 Token 刪除使用者帳戶，刪除後無法恢復")
-	@DeleteMapping("/user/delete-account")
+	@DeleteMapping("/user/account")
 	public ResponseEntity<Map<String, String>> deleteAccount(@RequestHeader("Authorization") String token) {
 		String email = jwtService.parseToken(token.substring(7));
 		String message = userService.deleteUser(email);

@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.User;
+import com.example.demo.exception.UserNotFoundException;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +18,6 @@ public class UserService {
 
     private final FirebaseService firebaseService;
 
-    // 更新個人資料
     public User updateUserProfile(String email, String firstName, String lastName, String password, String tel) {
         User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("找不到使用者"));
 
@@ -40,7 +40,6 @@ public class UserService {
     }
 
 
-    // 刪除帳號
     public String deleteUser(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("找不到使用者"));
@@ -54,5 +53,7 @@ public class UserService {
         return "用戶已刪除";
     }
 
-
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email).orElseThrow(()->new UserNotFoundException("找不到使用者"));
+    }
 }
