@@ -25,6 +25,10 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<?> handleUserNotFound(UserNotFoundException ex) {
 		return buildErrorResponse(ex, HttpStatus.NOT_FOUND, "Not Found");
 	}
+	@ExceptionHandler(ChatRoomNotFoundException.class)
+	public ResponseEntity<?> handleChatRoomNotFound(ChatRoomNotFoundException ex) {
+		return buildErrorResponse(ex, HttpStatus.NOT_FOUND, "Not Found");
+	}
 
 	@ExceptionHandler(InvalidCredentialsException.class)
 	public ResponseEntity<?> handleInvalidCredentialsException(InvalidCredentialsException ex) {
@@ -33,6 +37,10 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(EmailNotVerifiedException.class)
 	public ResponseEntity<?> handleEmailNotVerifiedException(EmailNotVerifiedException ex) {
+		return buildErrorResponse(ex, HttpStatus.FORBIDDEN, "Forbidden");
+	}
+	@ExceptionHandler(ChatRoomAccessDeniedException.class)
+	public ResponseEntity<?> handleChatRoomAccessDeniedException(ChatRoomAccessDeniedException ex) {
 		return buildErrorResponse(ex, HttpStatus.FORBIDDEN, "Forbidden");
 	}
 	@ExceptionHandler(DuplicateEmailException.class)
