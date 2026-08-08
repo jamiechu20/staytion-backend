@@ -14,15 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class MessageService {
     private final MessageRepository messageRepository;
     private final ChatRoomRepository chatRoomRepository;
-    private final UserRepository userRepository;
-    private final JwtService jwtService;
-    private final MessageDto messageDto;
 
     @Transactional
     public MessageDto sendMessage(Long chatRoomId,
@@ -61,6 +59,56 @@ public class MessageService {
         messageDto.setContent(content);
         messageDto.setSentAt(savedMessage.getSentAt());
         return messageDto;
+    }
+
+    public List<MessageDto> getMessages(Long chatRoomId, Long userId) {
+        ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
+                .orElseThrow(()-> new ChatRoomNotFoundException("找不到聊天室，chatRoomId=" + chatRoomId));
+        if (!userId.equals(chatRoom.getUser1().getId()) && !userId.equals(chatRoom.getUser2().getId())) {
+            throw new ChatRoomAccessDeniedException("使用者不屬於此聊天室，userId=" + userId + ", chatRoomId=" + chatRoomId);
+        }
+
+        List<Message> messages = messageRepository.findByChatRoomIdOrderBySentAt(chatRoomId);
+        messages.stream()
+                .filter(m -> !m.getSender().getId().equals(userId) && !m.getIsRead())
+                .forEach(m -> {
+                    m.setIsRead(true);
+                    messageRepository.save(m);
+                });
+        return messages.stream()
+                .map(message -> toMessageDto(message, userId))
+                .toList();
+
+    }
+    public MessageDto toMessageDto(Message message, Long userId) {
+        MessageDto messageDto = new MessageDto();
+        messageDto.setId(message.getId());
+        messageDto.setSenderId(message.getSender().getId());
+        messageDto.setReceiverId(message.getReceiver().getId());
+        messageDto.setContent(message.getContent());
+        messageDto.setSentAt(message.getSentAt());
+        messageDto.setChatRoomId(message.getChatRoom().getId());
+        messageDto.setHotelId(message.getHotel().getId());
+        messageDto.setRead(message.getIsRead());
+        messageDto.setDisplayName(resolveDisplayName(message, userId));
+        return messageDto;
+    }
+    public String resolveDisplayName(Message message, Long userId) {
+        String displayName;
+        if (message.getSender().getId().equals(userId)) {
+            if (message.getReceiver().getId().equals(message.getHotel().getOwner().getId())) {
+                displayName = message.getHotel().getHname();
+            } else {
+                displayName = message.getReceiver().getFirstName();
+            }
+        } else {
+            if (message.getSender().getId().equals(message.getHotel().getOwner().getId())) {
+                displayName = message.getHotel().getHname();
+            }  else {
+                displayName = message.getSender().getFirstName();
+            }
+        }
+        return displayName;
     }
 
 }

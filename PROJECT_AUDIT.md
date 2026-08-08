@@ -199,6 +199,12 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 > **補充（2026-07-30 新增，處理 §3.2 時發現）**：本項「位置」清單原本只列 `AuthController`、`UserController`，但複查後發現 `ChatController`、`MessageController`、`LocationController` 也都直接注入 Repository（`ChatRoomRepository`、`UserRepository`、`HotelRepository`、`MessageRepository`、`CityRepository`、`DistrictRepository`）。這次只把它們改成建構子注入（§3.2 範圍），Repository 依賴本身尚未移除，待本項排入時一併處理。
 
+> **補充（2026-08-05 新增，Learn-it-myself，處理 `ChatController`/`MessageController` 時）**：新增 `MessageService`（`sendMessage()`、`getMessages()`），並在設計過程中額外發現、修復兩個原本不在稽核清單中的授權漏洞：
+> - `sendMessage()` 原本沒有驗證發送者是否真的屬於目標 `chatRoomId`，任何登入使用者只要猜得到別人的 chatRoomId，就能插入訊息偽造對話（IDOR）。
+> - `getMessages()` 原本只驗證「有登入」，沒驗證「這個聊天室是不是你的」，等於任何登入使用者都能讀出別人的完整對話內容，是比寫入更嚴重的隱私外洩。
+>
+> 解法是讓 `ChatRoom` 既有的 `user1`/`user2` 參與者關聯本身成為授權依據（不符合就丟新增的 `ChatRoomAccessDeniedException`，對應 403；聊天室不存在則丟 `ChatRoomNotFoundException`，對應 404，兩者已在 `GlobalExceptionHandler` 註冊），同時讓 `receiver` 直接從 `chatRoom` 反推，不再信任呼叫端傳入的 `receiverId`。另外，`MessageController.sendMessage()`（REST 測試端點，已用註解自承「保留測試用，正式用 WebSocket」）與 `getChatHistory()`（用 receiverId+hotelId 查詢，功能與 `getMessages()` 用 chatRoomId 查詢完全重複）已確認在本 repo 內無任何呼叫端，決定直接刪除，不遷移。**尚未完成**：`ChatController`、`MessageController` 本身還沒改成呼叫 `MessageService`、移除 Repository 注入，是本項下一步。
+
 ---
 
 ### 2.4 Auth 流程：DB 寫入與 Firebase 建立無法原子性回滾
@@ -214,6 +220,27 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 **建議方向**：  
 設計明確的處理策略：若 Firebase 不可達，是否允許降級登入？或完全依賴 Firebase 作為 Identity Provider？先決定架構方向，再修復不一致問題。
+
+---
+
+### 2.5 聊天室資料模型的擴充性與效能限制（2026-08-05 新發現，處理 §2.3 `MessageService` 時）
+
+| 項目 | 內容 |
+|------|------|
+| **狀態** | ⬜ 未開始（先記錄，暫緩處理，優先完成 §2.3 的 Repository 移除） |
+| **位置** | `ChatRoom.java`、`Message.java`、`MessageService.resolveDisplayName()` |
+| **嚴重度** | 🟢 Low（目前資料量下不影響功能，是可擴充性/效能債，非 bug） |
+
+**問題說明**：
+
+**① `ChatRoom` 寫死 `user1`/`user2` 兩個固定欄位，只能支援雙人對話。** 業界常見做法是另外用一張「參與者關聯表」（例如 `chat_room_participants`，存 `chatRoomId` + `userId` 的多對多關係），才能不改資料庫結構就擴充成群組聊天。目前的設計是合理的 MVP 簡化，但代表未來若要支援群組對話（例如「飯店 + 房客 + 客服」三方），會是一次結構性重寫。
+
+**② `Message.isRead` 存在每一則訊息上，`MessageService.getMessages()` 用迴圈逐筆呼叫 `messageRepository.save()` 標記已讀。** 聊天室訊息量一多，打開聊天室這個動作就會觸發等量的 UPDATE。更常見的做法是在「聊天室-使用者」這個組合上存一個單一的 `lastReadAt`（或 `lastReadMessageId`），使用者打開聊天室只需要一次 UPDATE，判斷「這則訊息讀了沒」改用 `message.sentAt > lastReadAt` 比較即可。跟 [§2.2](#22-搜尋邏輯載入全部資料到記憶體致命效能問題)、[§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) 是同一類「逐筆處理造成 N 次資料庫操作」的思維。
+
+**③ `MessageService.resolveDisplayName()` 對每一則訊息都重新判斷一次「對話對象是誰」。** 但「對話對象是誰」其實是**聊天室**的屬性，同一個 `chatRoomId` 底下所有訊息的答案都一樣（`chatRoom.getUser1()`/`getUser2()` 兩者之一，不會因訊息而變）。目前寫法在 `getMessages()` 回傳的訊息列表裡，對每一筆訊息都重算一次，可以改成在方法一開始只算一次「對方是誰」，重複使用同一個結果。
+
+**建議方向**：  
+① 若確定未來會做群組聊天，改用參與者關聯表；若确定不會，維持現狀即可，但應在文件中明確記錄這個設計取捨。② 改用 `lastReadAt` 欄位，一次 UPDATE 取代逐筆 UPDATE。③ 把「對方是誰」的判斷從 `resolveDisplayName()` 內部移到 `getMessages()` 開頭算一次，重複利用。
 
 ---
 
@@ -662,6 +689,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | ⬜ | 為 User Center 模組補單元測試 | 🎓 Learn-it-myself | **高**（面試必問） | — |
 | ⬜ | 整合 `AuthService` 的 Firebase 和本地帳號狀態一致性 | 🎓 Learn-it-myself | 高 | [§2.4](#24-auth-流程db-寫入與-firebase-建立無法原子性回滾) |
 | ⬜ | 為 Entity 加基礎業務邏輯（`order.cancel()`） | 🎓 Learn-it-myself | 中（DDD 入門） | [§3.1](#31-貧血領域模型anemic-domain-model) |
+| ⬜ | 聊天室改用參與者關聯表 / `lastReadAt` 取代逐筆已讀 / `displayName` 只算一次 | 🎓 Learn-it-myself | 中（資料模型擴充性） | [§2.5](#25-聊天室資料模型的擴充性與效能限制2026-08-05-新發現處理-23-messageservice-時) |
 | ⬜ | 撰寫 README，說明架構、啟動方式、技術選型理由 | ⚡ Fix-it-faster | 低（但 Portfolio 必需） | — |
 
 ---
