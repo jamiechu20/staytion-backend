@@ -10,6 +10,7 @@ import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.ChatRoomService;
 import com.example.demo.service.JwtService;
+import com.example.demo.service.MessageService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class ChatController {
     private final MessageRepository messageRepository;
     private final ChatRoomService chatRoomService;
     private final JwtService jwtService;
+    private final MessageService messageService;
 
     @MessageMapping("/send")
     @Transactional
@@ -42,51 +44,13 @@ public class ChatController {
         try {
             System.out.println("收到 WebSocket 訊息: " + dto);
 
-            if (dto.getChatRoomId() == null) {
-                System.out.println("缺少 chatRoomId，請先透過 REST API 建立聊天室");
-                return;
-            }
-
-            ChatRoom chatRoom = chatRoomRepository.findById(dto.getChatRoomId())
-                    .orElse(null);
-
-            if (chatRoom == null) {
-                System.out.println("查不到 chatRoomId=" + dto.getChatRoomId());
-                return;
-            }
+            Long chatRoomId = dto.getChatRoomId();
+            String content = dto.getContent();
             String token = authHeader.replace("Bearer ", "");
             Long senderId = jwtService.getUserIdFromToken(token);
-            User sender = userRepository.findById(senderId).orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "使用者不存在"));
-            User receiver = userRepository.findById(dto.getReceiverId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "找不到接收者"));
+            MessageDto outDto = messageService.sendMessage(chatRoomId, senderId, content);
 
-            if (sender == null || receiver == null) {
-                System.out.println("查不到 sender 或 receiver");
-                return;
-            }
-
-            Message message = new Message();
-            message.setSender(sender);
-            message.setReceiver(receiver);
-            message.setHotel(chatRoom.getHotel());
-            message.setChatRoom(chatRoom);
-            message.setContent(dto.getContent());
-            message.setSentAt(LocalDateTime.now());
-            Message savedMessage = messageRepository.save(message);
-
-            chatRoom.setLastMessage(savedMessage.getContent());
-            chatRoom.setUpdatedAt(LocalDateTime.now());
-            chatRoomRepository.save(chatRoom);
-
-            MessageDto outDto = new MessageDto();
-            outDto.setId(savedMessage.getId());
-            outDto.setSenderId(sender.getId());
-            outDto.setReceiverId(receiver.getId());
-            outDto.setHotelId(chatRoom.getHotel().getId());
-            outDto.setChatRoomId(chatRoom.getId());
-            outDto.setContent(savedMessage.getContent());
-            outDto.setSentAt(savedMessage.getSentAt());
-
-            messagingTemplate.convertAndSend("/topic/chat/" + chatRoom.getId(), outDto);
+            messagingTemplate.convertAndSend("/topic/chat/" + chatRoomId, outDto);
         } catch (Exception e) {
             System.err.println("處理訊息時發生錯誤：" + e.getMessage());
             e.printStackTrace();
