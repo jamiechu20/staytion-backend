@@ -6,6 +6,7 @@ import com.example.demo.entity.ChatRoom;
 import com.example.demo.repository.ChatRoomRepository;
 import com.example.demo.service.ChatRoomService;
 import com.example.demo.service.JwtService;
+import com.example.demo.service.MessageService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 @RequestMapping("/api/chatrooms")
 public class ChatRoomController {
-
     private final ChatRoomService chatRoomService;
     private final JwtService jwtService;
     private final ChatRoomRepository chatRoomRepository;

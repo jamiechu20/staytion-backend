@@ -61,7 +61,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     } catch (MessagingException e) {
                         throw e;
                     } catch (Exception e) {
-                        throw new MessagingException("WebSocket 驗證失敗：" + e.getMessage(), e);
+                        throw new MessagingException("WebSocket 驗證失敗：", e);
                     }
                 }
                 return message;

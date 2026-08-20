@@ -1,29 +1,24 @@
 package com.example.demo.controller;
 
+import com.example.demo.dto.ErrorMessage;
 import com.example.demo.dto.MessageDto;
 import com.example.demo.entity.ChatRoom;
-import com.example.demo.entity.Message;
 import com.example.demo.entity.User;
+import com.example.demo.exception.ChatRoomAccessDeniedException;
+import com.example.demo.exception.ChatRoomNotFoundException;
 import com.example.demo.repository.ChatRoomRepository;
-import com.example.demo.repository.HotelRepository;
-import com.example.demo.repository.MessageRepository;
-import com.example.demo.repository.UserRepository;
-import com.example.demo.service.ChatRoomService;
-import com.example.demo.service.JwtService;
 import com.example.demo.service.MessageService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.time.LocalDateTime;
+import java.security.Principal;
 import java.util.List;
 
 @Controller
@@ -31,30 +26,28 @@ import java.util.List;
 public class ChatController {
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatRoomRepository chatRoomRepository;
-    private final UserRepository userRepository;
-    private final HotelRepository hotelRepository;
-    private final MessageRepository messageRepository;
-    private final ChatRoomService chatRoomService;
-    private final JwtService jwtService;
     private final MessageService messageService;
 
     @MessageMapping("/send")
     @Transactional
-    public void sendMessage(MessageDto dto, @Header("Authorization") String authHeader) {
-        try {
-            System.out.println("收到 WebSocket 訊息: " + dto);
+    public void sendMessage(MessageDto dto, Principal principal) {
+        Long chatRoomId = dto.getChatRoomId();
+        String content = dto.getContent();
+        Long senderId = Long.parseLong(principal.getName());
+        MessageDto outDto = messageService.sendMessage(chatRoomId, senderId, content);
+        messagingTemplate.convertAndSend("/topic/chat/" + chatRoomId, outDto);
+    }
 
-            Long chatRoomId = dto.getChatRoomId();
-            String content = dto.getContent();
-            String token = authHeader.replace("Bearer ", "");
-            Long senderId = jwtService.getUserIdFromToken(token);
-            MessageDto outDto = messageService.sendMessage(chatRoomId, senderId, content);
+    @MessageExceptionHandler(ChatRoomNotFoundException.class)
+    @SendToUser("/queue/errors")
+    public ErrorMessage handleChatRoomNotFoundException(ChatRoomNotFoundException ex) {
+        return new ErrorMessage(ex.getMessage());
+    }
 
-            messagingTemplate.convertAndSend("/topic/chat/" + chatRoomId, outDto);
-        } catch (Exception e) {
-            System.err.println("處理訊息時發生錯誤：" + e.getMessage());
-            e.printStackTrace();
-        }
+    @MessageExceptionHandler(ChatRoomAccessDeniedException.class)
+    @SendToUser("/queue/errors")
+    public ErrorMessage handleChatRoomAccessDeniedException(ChatRoomAccessDeniedException ex) {
+        return new ErrorMessage(ex.getMessage());
     }
 
     @GetMapping("/user/{userId}")
