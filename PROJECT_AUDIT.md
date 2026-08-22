@@ -1,6 +1,6 @@
 # Staytion 後端專案稽核報告
 
-> **撰寫日期**：2026-06-22（狀態最後同步：2026-07-09）  
+> **撰寫日期**：2026-06-22（狀態最後同步：2026-08-23）  
 > **稽核範圍**：`master` 分支，全部後端原始碼 + git 歷史記錄  
 > **嚴重程度標示**：🔴 High（高風險）｜🟡 Med（中風險）｜🟢 Low（低風險）  
 > **完成狀態標示**：✅ 已完成｜🚧 進行中（部分完成）｜⬜ 未開始
@@ -187,7 +187,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | 🚧 進行中（commit `378597c`，2026-07-09，隨 §2.1 一併處理；2026-08-01 更新） — `AuthController` 已移除 `UserRepository` 注入。`UserController` 已完成：新增 `UserService.getUserByEmail()`（找不到時拋 `UserNotFoundException`，`GlobalExceptionHandler` 已有對應 404 handler），`getProfile()` 改為呼叫該方法，`UserController` 的 `UserRepository` 欄位與 import 已移除。**`LocationController` 已完成**：新增 `LocationService`（`getAllCities()`、`getDistrictsByCity()`、`getAllDistricts()`、`searchLocations()`），新增 `dto/response/LocationOption.java`（record，含巢狀 `LocationType` enum，取代原本手動組 `Map<String,String>` 的做法），`LocationController` 四個方法皆已改為委派給 `LocationService`，`CityRepository`/`DistrictRepository` 注入與相關 import 已全部移除。**尚未處理**：`ChatController`、`MessageController` 仍直接注入 Repository（`ChatRoomRepository`、`UserRepository`、`HotelRepository`、`MessageRepository`），`MessageController` 對應的 Service 目前完全不存在，需要從零建立。 |
+| **狀態** | 🚧 進行中（commit `378597c`，2026-07-09，隨 §2.1 一併處理；2026-08-23 更新，尚未 commit） — `AuthController` 已移除 `UserRepository` 注入。`UserController` 已完成：新增 `UserService.getUserByEmail()`（找不到時拋 `UserNotFoundException`，`GlobalExceptionHandler` 已有對應 404 handler），`getProfile()` 改為呼叫該方法，`UserController` 的 `UserRepository` 欄位與 import 已移除。**`LocationController` 已完成**：新增 `LocationService`（`getAllCities()`、`getDistrictsByCity()`、`getAllDistricts()`、`searchLocations()`），新增 `dto/response/LocationOption.java`（record，含巢狀 `LocationType` enum，取代原本手動組 `Map<String,String>` 的做法），`LocationController` 四個方法皆已改為委派給 `LocationService`，`CityRepository`/`DistrictRepository` 注入與相關 import 已全部移除。**`ChatController` 已完成**：`sendMessage()` 改呼叫 `MessageService.sendMessage()`；原本的 `getChatRoomsByUser()`/`getChatRoomsByHotel()`（直接注入 `ChatRoomRepository`，且回傳裸 `ChatRoom` entity、洩漏巢狀 `User` 的 password hash，屬於 [§4.5.1](#451-controller-直接回傳-user-entity洩漏-password-hash2026-08-01-新發現並已修復) 同類問題）已整個搬到 `ChatRoomController`，改名為 `getChatRoomsByUser()`（`/api/chatrooms/my`，與既有的 `getMyChatRooms()` 合併，改用 JWT 解析身份而非信任 path variable，一併修掉潛在 IDOR）與 `getChatRoomsByHotel()`（`/api/chatrooms/hotel/{hotelId}`，新增），兩者皆改為委派給 `ChatRoomService`（新增 `getChatRoomsForHotel()`），回傳 `ChatRoomDto` 而非 entity。`ChatController` 的 `ChatRoomRepository`/`ChatRoom`/`User` 注入與 import 已全部移除；`ChatRoomController` 也順手移除了多餘的 `chatRoomRepository.save()` 重複存檔呼叫（`findOrCreateChatRoom()` 內的 `ChatRoomService` 已經存過一次）與對應的 Repository 注入。**至此 `ChatController`、`ChatRoomController` 皆已完全不直接存取 Repository。尚未處理**：`MessageController` 完全還沒動，對應的重複 REST 端點（`sendMessage()`、`getChatHistory()`）也還沒刪除，是本項最後剩下的部分。 |
 | **位置** | `AuthController.java`（注入 `UserRepository`）、`UserController.java`（注入 `UserRepository`） |
 | **嚴重度** | 🟡 Med |
 
@@ -203,7 +203,13 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 > - `sendMessage()` 原本沒有驗證發送者是否真的屬於目標 `chatRoomId`，任何登入使用者只要猜得到別人的 chatRoomId，就能插入訊息偽造對話（IDOR）。
 > - `getMessages()` 原本只驗證「有登入」，沒驗證「這個聊天室是不是你的」，等於任何登入使用者都能讀出別人的完整對話內容，是比寫入更嚴重的隱私外洩。
 >
-> 解法是讓 `ChatRoom` 既有的 `user1`/`user2` 參與者關聯本身成為授權依據（不符合就丟新增的 `ChatRoomAccessDeniedException`，對應 403；聊天室不存在則丟 `ChatRoomNotFoundException`，對應 404，兩者已在 `GlobalExceptionHandler` 註冊），同時讓 `receiver` 直接從 `chatRoom` 反推，不再信任呼叫端傳入的 `receiverId`。另外，`MessageController.sendMessage()`（REST 測試端點，已用註解自承「保留測試用，正式用 WebSocket」）與 `getChatHistory()`（用 receiverId+hotelId 查詢，功能與 `getMessages()` 用 chatRoomId 查詢完全重複）已確認在本 repo 內無任何呼叫端，決定直接刪除，不遷移。**尚未完成**：`ChatController`、`MessageController` 本身還沒改成呼叫 `MessageService`、移除 Repository 注入，是本項下一步。
+> 解法是讓 `ChatRoom` 既有的 `user1`/`user2` 參與者關聯本身成為授權依據（不符合就丟新增的 `ChatRoomAccessDeniedException`，對應 403；聊天室不存在則丟 `ChatRoomNotFoundException`，對應 404，兩者已在 `GlobalExceptionHandler` 註冊），同時讓 `receiver` 直接從 `chatRoom` 反推，不再信任呼叫端傳入的 `receiverId`。另外，`MessageController.sendMessage()`（REST 測試端點，已用註解自承「保留測試用，正式用 WebSocket」）與 `getChatHistory()`（用 receiverId+hotelId 查詢，功能與 `getMessages()` 用 chatRoomId 查詢完全重複）已確認在本 repo 內無任何呼叫端，決定直接刪除，不遷移。
+
+> **補充（2026-08-19 新增，Learn-it-myself，處理 `ChatController` 時發現並修復）**：`WebSocketConfig` 原本完全沒有任何身份驗證機制——STOMP 連線在 CONNECT 階段不驗證任何東西，任何人都能建立連線、送任意訊息，`ChatController` 過去只能靠每個 `@MessageMapping` 方法自己在方法內手動重新解析 JWT，無法拒絕無效連線，也無法把錯誤回饋送給特定使用者（`@SendToUser` 需要 session 上綁定身份才能定位收件人）。修法是新增 `ChannelInterceptor`（`configureClientInboundChannel`），在 CONNECT frame 驗證 `Authorization` native header 帶的 JWT：header 缺失/格式錯、token 解析失敗、查無使用者，一律丟 `MessagingException` 直接拒絕連線（不允許匿名連線）；驗證成功則 `accessor.setUser(...)` 綁定身份。同時發現並修復另一個相關小缺口：`SecurityConfig` 從未明確設定 `SessionCreationPolicy`，代表這個名義上無狀態的 JWT API，實際上 Spring Security 預設的 session-based `SecurityContext` 還原機制仍啟用著，已補上 `SessionCreationPolicy.STATELESS`。
+>
+> **後續（2026-08-21，同一輪）**：`ChatController` 補上 `@MessageExceptionHandler`（對應 `ChatRoomNotFoundException`/`ChatRoomAccessDeniedException`）+ `@SendToUser("/queue/errors")`，讓 `sendMessage()` 的授權例外能實際送回發送者本人；`sendMessage()` 本身也已改為用 `Principal`（上述 CONNECT 階段綁定的身份）取代手動解析 JWT。
+>
+> **後續（2026-08-23，同一輪，尚未 commit）**：`ChatController` 剩下的 `getChatRoomsByUser()`/`getChatRoomsByHotel()` 已搬到 `ChatRoomController`，改為委派給 `ChatRoomService`、回傳 DTO，詳見上方狀態欄。**尚未完成**：整個 `MessageController`，是本項下一步。
 
 ---
 

@@ -3,10 +3,8 @@ package com.example.demo.controller;
 import com.example.demo.dto.ChatRoomDto;
 import com.example.demo.dto.request.ChatRoomRequestDto;
 import com.example.demo.entity.ChatRoom;
-import com.example.demo.repository.ChatRoomRepository;
 import com.example.demo.service.ChatRoomService;
 import com.example.demo.service.JwtService;
-import com.example.demo.service.MessageService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +19,6 @@ import java.util.Map;
 public class ChatRoomController {
     private final ChatRoomService chatRoomService;
     private final JwtService jwtService;
-    private final ChatRoomRepository chatRoomRepository;
 
     @PostMapping("/find-or-create")
     @Operation(summary = "尋找或建立聊天室", description = "根據 senderId（由JWT解析userId）、receiverId 和 hotelId，尋找或建立聊天室並回傳 chatRoomId")
@@ -35,7 +32,6 @@ public class ChatRoomController {
         Long hotelId = requestDto.getHotelId();
 
         ChatRoom chatRoom = chatRoomService.findOrCreateChatRoom(senderId, receiverId, hotelId);
-        chatRoom = chatRoomRepository.save(chatRoom);
         System.out.println("建立聊天室成功 ID: " + chatRoom.getId());
         Map<String, Long> response = new HashMap<>();
         response.put("chatRoomId", chatRoom.getId());
@@ -46,11 +42,16 @@ public class ChatRoomController {
 
     @GetMapping("/my")
     @Operation(summary = "載入使用者聊天室列表")
-    public List<ChatRoomDto> getMyChatRooms(@RequestHeader("Authorization") String authHeader) {
+    public List<ChatRoomDto> getChatRoomsByUser(@RequestHeader("Authorization") String authHeader) {
         System.out.println("getMyChatRooms 執行了！");
         String token = authHeader.replace("Bearer ", "");
         Long userId = jwtService.getUserIdFromToken(token);
-
         return chatRoomService.getChatRoomsForUser(userId);
+    }
+
+    @GetMapping("/hotel/{hotelId}")
+    @Operation(summary = "某飯店的所有聊天室")
+    public List<ChatRoomDto> getChatRoomsByHotel(@PathVariable Long hotelId) {
+        return chatRoomService.getChatRoomsForHotel(hotelId);
     }
 }

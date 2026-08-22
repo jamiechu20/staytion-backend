@@ -67,7 +67,7 @@ public class ChatRoomService {
 
             Long ownerId = room.getHotel().getOwner().getId();
             if (userId.equals(ownerId)) {
-                //房東身份，顯示房客名字＋
+                //房東身份，顯示房客名字＋飯店名
                 Long guestId = room.getUser1().getId().equals(ownerId)
                         ? room.getUser2().getId() : room.getUser1().getId();
                 dto.setReceiverId(guestId);
@@ -82,5 +82,25 @@ public class ChatRoomService {
             }
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    public List<ChatRoomDto> getChatRoomsForHotel(Long hotelId) {
+        List<ChatRoom> chatRooms = chatRoomRepository.findByHotel_Id(hotelId);
+        return chatRooms.stream().map(room -> {
+            ChatRoomDto dto = new ChatRoomDto();
+            dto.setChatRoomId(room.getId());
+            dto.setUpdatedAt(room.getUpdatedAt());
+            dto.setLastMessage(room.getLastMessage());
+            dto.setHotelId(room.getHotel().getId());
+            dto.setHotelName(room.getHotel().getHname());
+            Long ownerId = room.getHotel().getOwner().getId();
+            Long guestId = room.getUser1().getId().equals(ownerId)
+                    ? room.getUser2().getId() : room.getUser1().getId();
+            dto.setReceiverId(guestId);
+            String guestName = userRepository.findById(guestId).map(u -> u.getFirstName()).orElse("未知房客");
+            dto.setDisplayName(guestName);
+            return dto;
+        }).toList();
+
     }
 }
