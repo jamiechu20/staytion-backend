@@ -8,7 +8,6 @@ import com.example.demo.dto.response.ReviewResponseDto;
 import com.example.demo.entity.User;
 import com.example.demo.service.JwtService;
 import com.example.demo.service.ReviewService;
-import com.example.demo.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +27,6 @@ import java.util.List;
 //@CrossOrigin(origins = "http://127.0.0.1:5500")
 public class ReviewController {
     private final ReviewService reviewService;
-    private final UserService userService;
     private final JwtService jwtService;
 
     // 房型詳情頁：取得某飯店的評論
