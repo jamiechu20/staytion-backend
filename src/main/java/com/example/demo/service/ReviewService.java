@@ -164,14 +164,15 @@ public class ReviewService {
         }
 
         if (startDate != null) {
+            LocalDateTime startOfDay = startDate.atStartOfDay();
             spec = spec.and((root, query, cb) ->
-                    cb.greaterThanOrEqualTo(root.get("createdAt"), startDate));
+                    cb.greaterThanOrEqualTo(root.get("createdAt"), startOfDay));
         }
 
         if (endDate != null) {
             LocalDateTime endOfDay = endDate.atTime(LocalTime.MAX);
             spec = spec.and((root, query, cb) ->
-                    cb.lessThanOrEqualTo(root.get("createdAt"), endDate));
+                    cb.lessThanOrEqualTo(root.get("createdAt"), endOfDay));
         }
         if (pageable.getSort().isUnsorted()) {
             pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("createdAt").descending());

@@ -434,15 +434,15 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ⬜ 未開始 — 複查後 bug 仍在：`endOfDay` 有算但第 174 行仍傳入 `endDate`。 |
-| **位置** | `ReviewService.java:175-179`（`searchReviewsForHost` 方法） |
+| **狀態** | ✅ 已完成（2026-08-23） — `endDate` 已改傳 `endOfDay`（`LocalDateTime`）。同時發現並修復 `startDate` 同一類型別不一致問題：原本直接拿 `LocalDate` 跟 `createdAt`（`LocalDateTime`）比較，已改用 `startDate.atStartOfDay()`，與 `endOfDay` 對稱。 |
+| **位置** | `ReviewService.java`（`searchReviewsForHost` 方法） |
 | **嚴重度** | 🟡 Med |
 
 **問題說明**：  
 程式碼計算了 `endOfDay`（`endDate.atTime(LocalTime.MAX)`），但最後傳給 `cb.lessThanOrEqualTo` 的是原始的 `endDate`（`LocalDate`），而非 `endOfDay`（`LocalDateTime`）。這個 bug 會導致在查詢「結束日期當天」建立的評論時，因為時間比對不正確而遺漏資料。
 
-**建議方向**：  
-將 `endDate` 改為 `endOfDay`（`LocalDateTime`）傳入 Specification。
+**建議方向（已執行）**：  
+將 `endDate` 改為 `endOfDay`（`LocalDateTime`）傳入 Specification；`startDate` 比照改用 `atStartOfDay()`。
 
 ---
 
@@ -652,7 +652,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | ✅ | 移除 Controller 中的 Repository 直接存取 | 🎓 Learn-it-myself | 高 | [§2.3](#23-controller-直接存取-repository) |
 | ✅ | 修復 `UserController` 洩漏 `User` entity（含 password hash） | 🎓 Learn-it-myself | 高（DTO 分層、record 語言特性） | [§4.5.1](#451-controller-直接回傳-user-entity洩漏-password-hash2026-08-01-新發現並已修復) |
 | ⬜ | 修復 `FirebaseConfig` 的 `javax` → `jakarta` import | ⚡ Fix-it-faster | 低 | [§4.7](#47-javaxannotation-vs-jakartaannotation) |
-| ⬜ | 修復 `ReviewService` 日期過濾 bug | ⚡ Fix-it-faster | 低 | [§4.6](#46-reviewservice-的日期過濾-bug) |
+| ✅ | 修復 `ReviewService` 日期過濾 bug | ⚡ Fix-it-faster | 低 | [§4.6](#46-reviewservice-的日期過濾-bug) |
 | ⬜ | 統一 CORS 設定，移除分散的 `@CrossOrigin` | ⚡ Fix-it-faster | 低 | [§1.5](#15-cors-設定不一致websocket-完全開放) |
 | 🚧 | 刪除死碼（`OrderService.java`、大量 comment blocks） | ⚡ Fix-it-faster | 低 | [§4.3](#43-大量被註解的死碼) |
 | ⬜ | 替換 `System.out.println` 為 SLF4J Logger | ⚡ Fix-it-faster | 低（但面試表現重要） | [§4.4](#44-systemoutprintln-滿佈-production-程式碼) |
