@@ -101,15 +101,17 @@
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ⬜ 未開始 — 仍有 14 處 `@CrossOrigin`，`WebSocketConfig` 仍為 `setAllowedOriginPatterns("*")`。 |
-| **位置** | `SecurityConfig.java:71-83`、`WebSocketConfig.java:21`、各 controller 的 `@CrossOrigin` |
+| **狀態** | ✅ 已完成（2026-08-24） — 10 個 controller 的 `@CrossOrigin` 已全部移除（`OrderController`、`ReviewController`、`EcpayController` 內原本被註解的 `@CrossOrigin` 屬於 §4.3 死碼範圍，不在本項處理）。`WebSocketConfig` 已從 `setAllowedOriginPatterns("*")` 收斂為與 `SecurityConfig` 一致的固定名單。 |
+| **位置** | `SecurityConfig.java`（`corsConfigurer`）、`WebSocketConfig.java`（`registerStompEndpoints`） |
 | **嚴重度** | 🟡 Med |
 
 **問題說明**：  
 `SecurityConfig` 中已有全域 CORS 設定（僅允許 `127.0.0.1:5500`、`localhost:5500`），但多個 controller 還各自加上 `@CrossOrigin` 註解，形成雙重設定，且有些只允許單一 origin，邏輯容易混亂。更嚴重的是 `WebSocketConfig` 使用 `setAllowedOriginPatterns("*")`，完全不限制來源，與其他地方的策略矛盾。
 
-**建議方向**：  
-移除所有 controller 層的 `@CrossOrigin`，統一在 `SecurityConfig` 的 CORS configurer 中集中設定，WebSocket 也應一致收緊。
+**建議方向（已執行）**：  
+移除所有 controller 層的 `@CrossOrigin`，統一在 `SecurityConfig` 的 CORS configurer 中集中設定，WebSocket 也已一致收緊為固定 origin 名單。
+
+> **補充（2026-08-24）**：整理時發現兩個原本清單外的細節，皆已一併處理：① `EcpayController` 的 `@CrossOrigin` 多帶了兩個 `trycloudflare.com` 開發用 tunnel 網址（每次啟動 `cloudflared` 都會換），確認是過時的暫時性設定，已捨棄、未併入全域清單；② 同一個 `@CrossOrigin` 還列了 `https://payment-stage.ecpay.com.tw`（綠界測試站網域），雖然 CORS 只管瀏覽器發出的跨域請求、綠界對後端的 server-to-server 通知（`notify_url`）本不受 CORS 管控，但保守起見已一併加進 `SecurityConfig` 的全域 CORS 清單，避免日後有瀏覽器端流程需要用到時漏掉。
 
 ---
 
@@ -653,7 +655,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | ✅ | 修復 `UserController` 洩漏 `User` entity（含 password hash） | 🎓 Learn-it-myself | 高（DTO 分層、record 語言特性） | [§4.5.1](#451-controller-直接回傳-user-entity洩漏-password-hash2026-08-01-新發現並已修復) |
 | ✅ | 修復 `FirebaseConfig` 的 `javax` → `jakarta` import | ⚡ Fix-it-faster | 低 | [§4.7](#47-javaxannotation-vs-jakartaannotation) |
 | ✅ | 修復 `ReviewService` 日期過濾 bug | ⚡ Fix-it-faster | 低 | [§4.6](#46-reviewservice-的日期過濾-bug) |
-| ⬜ | 統一 CORS 設定，移除分散的 `@CrossOrigin` | ⚡ Fix-it-faster | 低 | [§1.5](#15-cors-設定不一致websocket-完全開放) |
+| ✅ | 統一 CORS 設定，移除分散的 `@CrossOrigin` | ⚡ Fix-it-faster | 低 | [§1.5](#15-cors-設定不一致websocket-完全開放) |
 | 🚧 | 刪除死碼（`OrderService.java`、大量 comment blocks） | ⚡ Fix-it-faster | 低 | [§4.3](#43-大量被註解的死碼) |
 | ⬜ | 替換 `System.out.println` 為 SLF4J Logger | ⚡ Fix-it-faster | 低（但面試表現重要） | [§4.4](#44-systemoutprintln-滿佈-production-程式碼) |
 | ⬜ | 整合 Arvin 系列到對應 class，刪除命名類別 | ⚡ Fix-it-faster | 低 | [§4.2](#42-隊友名字出現在類別名稱中) |

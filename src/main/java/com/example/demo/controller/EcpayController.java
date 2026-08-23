@@ -216,8 +216,6 @@ import java.util.regex.Pattern;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/payments")
-@CrossOrigin(origins = {"https://yen-ward-plates-visitor.trycloudflare.com", "https://youth-exclude-cartridge-isa.trycloudflare.com", "http://127.0.0.1:5500", "http://127.0.0.1:5501",
-        "https://payment-stage.ecpay.com.tw"}) // 測試方便，正式環境請換為明確來源
 public class EcpayController {
 
     private final BookingService bookingService;

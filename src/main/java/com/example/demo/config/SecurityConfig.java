@@ -68,7 +68,7 @@ public class SecurityConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins("http://127.0.0.1:5500", "http://localhost:5500", "http://127.0.0.1:5501")  // 允許前端的域名（根據實際需要修改）
+                        .allowedOrigins("http://127.0.0.1:5500", "http://localhost:5500", "http://127.0.0.1:5501", "https://payment-stage.ecpay.com.tw")  // 允許前端的域名（根據實際需要修改）
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")  // 允許的 HTTP 方法
                         .allowedHeaders("*")
                         .allowCredentials(true);  // 允許跨域請求攜帶憑證（如 cookies）

@@ -21,7 +21,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/admins/orders")
-@CrossOrigin(origins = "http://127.0.0.1:5500")
 @Tag(name = "Admin Order Management", description = "後台訂單管理 API")
 public class AdminOrderController {
 
