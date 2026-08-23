@@ -450,14 +450,14 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ⬜ 未開始 |
-| **位置** | `FirebaseConfig.java:8`（`import javax.annotation.PostConstruct`） |
+| **狀態** | ✅ 已完成（2026-08-24） — 已改為 `jakarta.annotation.PostConstruct`。註：`FirebaseConfig` 本身按 [§6](#6-未完成的第三方整合firebase--google-maps) 已定案未來會整檔移除，這裡先修是為了目前 classpath 正確性；若之後確定移除 Firebase，這個檔案會一併刪除，屆時本項修改自動失效不影響。 |
+| **位置** | `FirebaseConfig.java`（`import jakarta.annotation.PostConstruct`） |
 | **嚴重度** | 🟡 Med |
 
 **問題說明**：  
 本專案使用 Spring Boot 3.5.0（Java EE → Jakarta EE 命名空間遷移後）。`javax.annotation.PostConstruct` 在 Spring Boot 3.x 中已被棄用，應改為 `jakarta.annotation.PostConstruct`。雖然部分情境仍可運作（若 classpath 中有相關依賴），但這是潛在的問題。
 
-**建議方向**：  
+**建議方向（已執行）**：  
 將 `import javax.annotation.PostConstruct` 替換為 `import jakarta.annotation.PostConstruct`。
 
 ---
@@ -651,7 +651,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | ✅ | 啟用 `GlobalExceptionHandler`，統一錯誤回應格式 | 🎓 Learn-it-myself | 高 | [§3.3](#33-globalexceptionhandler-完全被註解) |
 | ✅ | 移除 Controller 中的 Repository 直接存取 | 🎓 Learn-it-myself | 高 | [§2.3](#23-controller-直接存取-repository) |
 | ✅ | 修復 `UserController` 洩漏 `User` entity（含 password hash） | 🎓 Learn-it-myself | 高（DTO 分層、record 語言特性） | [§4.5.1](#451-controller-直接回傳-user-entity洩漏-password-hash2026-08-01-新發現並已修復) |
-| ⬜ | 修復 `FirebaseConfig` 的 `javax` → `jakarta` import | ⚡ Fix-it-faster | 低 | [§4.7](#47-javaxannotation-vs-jakartaannotation) |
+| ✅ | 修復 `FirebaseConfig` 的 `javax` → `jakarta` import | ⚡ Fix-it-faster | 低 | [§4.7](#47-javaxannotation-vs-jakartaannotation) |
 | ✅ | 修復 `ReviewService` 日期過濾 bug | ⚡ Fix-it-faster | 低 | [§4.6](#46-reviewservice-的日期過濾-bug) |
 | ⬜ | 統一 CORS 設定，移除分散的 `@CrossOrigin` | ⚡ Fix-it-faster | 低 | [§1.5](#15-cors-設定不一致websocket-完全開放) |
 | 🚧 | 刪除死碼（`OrderService.java`、大量 comment blocks） | ⚡ Fix-it-faster | 低 | [§4.3](#43-大量被註解的死碼) |
