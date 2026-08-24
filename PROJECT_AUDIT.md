@@ -147,6 +147,40 @@
 
 ---
 
+### 1.8 Review/Message 使用者輸入缺乏輸出端防護（Stored XSS 風險）（2026-08-25 新發現，聊天討論 CORS/CSRF/XSS 差異時）
+
+| 項目 | 內容 |
+|------|------|
+| **狀態** | ⬜ 未開始 |
+| **位置** | `Review.comment`、`Message.content`（entity 欄位）；`ReviewController`、`MessageController`/`ChatController`（原封不動存入 DB、原封不動以 JSON 回傳） |
+| **嚴重度** | 🟡 Med（後端本身不會執行任何程式碼，實際能否被觸發取決於前端渲染方式，前端不在本 repo 範圍內；但一旦前端用 `innerHTML` 等不安全方式渲染，就會變成能竊取其他使用者 JWT token 的 Stored XSS，故不能算低風險） |
+
+**問題說明**：  
+`Review.comment`、`Message.content` 存的是使用者原始輸入，後端目前沒有任何過濾或消毒，直接存進資料庫、直接透過 API 回傳給前端。如果攻擊者在評論或聊天訊息中寫入 `<script>...</script>`，且前端用 `element.innerHTML = comment` 這類方式渲染，瀏覽器會把它當成真的程式碼執行——這是 **Stored XSS（儲存型 XSS）**：惡意內容存在資料庫裡，之後每個瀏覽到這則評論/訊息的使用者都會中招，能拿到的東西包括其他人存在 `localStorage` 的 JWT token（詳見本次對話中 CORS/CSRF/XSS 的討論）。
+
+專案裡剛好有個對照組：`src/main/resources/static/webSocketTest.html`（WebSocket 測試頁）第 65、102 行渲染訊息時用的是 `li.innerText = ...`，不是 `innerHTML`，即使內容包含 `<script>` 也只會被當純文字顯示——這是正確示範，但那只是一支測試頁，不是正式前端會怎麼做的保證。
+
+**建議方向**：  
+① 前端渲染使用者輸入時一律用 `textContent`/`innerText`，或改用會自動 escape 的框架（React/Vue 預設行為），絕不手動 `innerHTML` 拼接使用者資料——但這部分不在本 repo。② 後端可加一層防禦（defense in depth）：儲存前對明顯的 HTML tag 做過濾/escape，或至少在 API 回應上明確用 `Content-Type: application/json` 讓前端清楚知道這是純資料而非可信任的 HTML 片段（目前應該已經是 JSON，但沒有額外的內容過濾）。
+
+---
+
+### 1.9 MailService 用字串拼接組 HTML 信件（潛在地雷寫法）（2026-08-25 新發現，同上）
+
+| 項目 | 內容 |
+|------|------|
+| **狀態** | ⬜ 未開始 |
+| **位置** | `MailService.sendHtmlMail()`；呼叫端 `AuthService.java`（`register()`、`sendResetPasswordEmail()`）、`AuthController.java`（`/api/auth/resend-verification`） |
+| **嚴重度** | 🟢 Low（現況安全，是預防性問題——拼進 HTML 字串的目前只有後端自產的 JWT token 與設定檔網址，不是使用者可控的自由文字） |
+
+**問題說明**：  
+`sendHtmlMail()` 的呼叫端全部用字串拼接組 HTML，例如 `AuthService.java`：`"<p>請點擊以下連結驗證信箱：</p><a href=\"" + verifyLink + "\">驗證信箱</a>"`。目前拼進去的值都是後端自己產生的（JWT token、設定檔裡的驗證連結網址），不是使用者輸入，所以現況不構成可利用的漏洞。但「字串拼接組 HTML」這個寫法本身是危險模式：只要未來有人在這附近加一行、把使用者輸入（例如姓名）也拼進這段 HTML，就會立刻變成攻擊者能在寄給任意人的信件裡塞入惡意連結或指令碼的漏洞（可用於釣魚信、Email-based XSS）。這類問題不會在寫下的當下爆炸，是日後有人不知情地延伸這段程式碼時才會爆炸，屬於「地雷留在原地」型的技術債。
+
+**建議方向**：  
+若未來需要把使用者輸入放進 HTML 郵件內容，改用範本引擎（Thymeleaf 的 `TemplateEngine` 或類似工具）並確保有 HTML escape，而非手動字串拼接；目前的 code 可以先在該方法上加註解提醒「僅限拼接後端自產內容，勿放入使用者輸入」，或等改動時再一併處理。
+
+---
+
 ## 2. 架構與系統設計
 
 ### 2.1 Service 層回傳 ResponseEntity（職責錯誤）
@@ -660,6 +694,8 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | ⬜ | 替換 `System.out.println` 為 SLF4J Logger | ⚡ Fix-it-faster | 低（但面試表現重要） | [§4.4](#44-systemoutprintln-滿佈-production-程式碼) |
 | ⬜ | 整合 Arvin 系列到對應 class，刪除命名類別 | ⚡ Fix-it-faster | 低 | [§4.2](#42-隊友名字出現在類別名稱中) |
 | ⬜ | 重命名 package 為 `com.staytion.backend` | ⚡ Fix-it-faster | 低 | [§4.1](#41-package-名稱仍是-spring-initializr-預設值) |
+| ⬜ | Review/Message 使用者輸入加輸出端防護（Stored XSS） | 🎓 Learn-it-myself | 高（User Center 模組 + 安全性核心概念） | [§1.8](#18-reviewmessage-使用者輸入缺乏輸出端防護stored-xss-風險2026-08-25-新發現聊天討論-corscsrfxss-差異時) |
+| ⬜ | `MailService` 改用範本引擎，移除字串拼接組 HTML 的地雷寫法 | ⚡ Fix-it-faster | 低（現況安全，屬預防性技術債） | [§1.9](#19-mailservice-用字串拼接組-html-信件潛在地雷寫法2026-08-25-新發現同上) |
 
 ---
 
