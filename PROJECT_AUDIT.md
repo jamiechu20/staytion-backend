@@ -101,15 +101,17 @@
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ✅ 已完成（2026-08-24） — 10 個 controller 的 `@CrossOrigin` 已全部移除（`OrderController`、`ReviewController`、`EcpayController` 內原本被註解的 `@CrossOrigin` 屬於 §4.3 死碼範圍，不在本項處理）。`WebSocketConfig` 已從 `setAllowedOriginPatterns("*")` 收斂為與 `SecurityConfig` 一致的固定名單。 |
-| **位置** | `SecurityConfig.java`（`corsConfigurer`）、`WebSocketConfig.java`（`registerStompEndpoints`） |
+| **狀態** | ✅ 已完成（2026-08-24 ～ 2026-08-26） — 10 個 controller 的 `@CrossOrigin` 已全部移除（`OrderController`、`ReviewController`、`EcpayController` 內原本被註解的 `@CrossOrigin` 屬於 §4.3 死碼範圍，不在本項處理）。`WebSocketConfig` 已從 `setAllowedOriginPatterns("*")` 收斂為與 `SecurityConfig` 一致的固定名單。**2026-08-26 完成第二輪修正**：發現原本的修法仍不完整——`WebConfig.java` 這個獨立的 `WebMvcConfigurer`（`/api/**`，設定跟 `SecurityConfig` 不同）當時沒被列進稽核範圍，跟 `SecurityConfig` 的 `corsConfigurer()` 同時存在，兩者路徑重疊（`/api/**` vs `/**`），實際合併/覆蓋行為不透明。已徹底改用 Spring Security 建議寫法：`SecurityConfig` 新增明確的 `CorsConfigurationSource` bean（`UrlBasedCorsConfigurationSource`，`/**` 對應單一份設定），`filterChain()` 改用 `.cors(cors -> cors.configurationSource(...))` 直接注入，取代原本靠 `.cors(Customizer.withDefaults())` 讓 Spring Security 反查 `WebMvcConfigurer` 的隱性機制；原本的 `corsConfigurer()` Bean 方法與 `WebConfig.java` 已整個刪除，CORS 設定現在只有唯一一份來源。 |
+| **位置** | `SecurityConfig.java`（`corsConfigurationSource`、`filterChain`）、`WebSocketConfig.java`（`registerStompEndpoints`） |
 | **嚴重度** | 🟡 Med |
 
 **問題說明**：  
 `SecurityConfig` 中已有全域 CORS 設定（僅允許 `127.0.0.1:5500`、`localhost:5500`），但多個 controller 還各自加上 `@CrossOrigin` 註解，形成雙重設定，且有些只允許單一 origin，邏輯容易混亂。更嚴重的是 `WebSocketConfig` 使用 `setAllowedOriginPatterns("*")`，完全不限制來源，與其他地方的策略矛盾。
 
 **建議方向（已執行）**：  
-移除所有 controller 層的 `@CrossOrigin`，統一在 `SecurityConfig` 的 CORS configurer 中集中設定，WebSocket 也已一致收緊為固定 origin 名單。
+移除所有 controller 層的 `@CrossOrigin`，統一用一個明確的 `CorsConfigurationSource` bean 集中設定（而非依賴 `WebMvcConfigurer` + Spring Security 自動反查），WebSocket 也已一致收緊為固定 origin 名單。
+
+> **補充（2026-08-26，Learn-it-myself）**：這次順便釐清了 Spring 兩種 CORS 設定機制的差異——`WebMvcConfigurer.addCorsMappings()` 是 Spring MVC 層級的設定；`.cors(Customizer.withDefaults())` 在沒有明確 `CorsConfigurationSource` bean 時，會透過 `HandlerMappingIntrospector` 反查容器裡所有 `WebMvcConfigurer` bean 的設定，這也是原本 `WebConfig` + `SecurityConfig.corsConfigurer()` 兩者能同時生效、互相打架的根本原因。改用明確的 `CorsConfigurationSource` bean 直接餵給 `.cors(...)`，讓 CORS 規則只有一份、來源清楚，是業界對「有 Spring Security 的專案」的慣例寫法。
 
 > **補充（2026-08-24）**：整理時發現兩個原本清單外的細節，皆已一併處理：① `EcpayController` 的 `@CrossOrigin` 多帶了兩個 `trycloudflare.com` 開發用 tunnel 網址（每次啟動 `cloudflared` 都會換），確認是過時的暫時性設定，已捨棄、未併入全域清單；② 同一個 `@CrossOrigin` 還列了 `https://payment-stage.ecpay.com.tw`（綠界測試站網域），雖然 CORS 只管瀏覽器發出的跨域請求、綠界對後端的 server-to-server 通知（`notify_url`）本不受 CORS 管控，但保守起見已一併加進 `SecurityConfig` 的全域 CORS 清單，避免日後有瀏覽器端流程需要用到時漏掉。
 
