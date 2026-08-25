@@ -175,46 +175,6 @@ public class BookingService {
 	public BookingResponse updateBooking(Long orderId, BookingRequest dto) {
 		// 1. 找訂單
 		Order order = orderRepository.findById(orderId).orElseThrow(() -> new RuntimeException("找不到訂單"));
-		// 2. 轉換日期
-//		LocalDate newCheckIn = LocalDate.parse(dto.getCheckInDate());
-//		LocalDate newCheckOut = LocalDate.parse(dto.getCheckOutDate());
-//
-//		// 3. 檢查每個房型剩餘數量
-//		for (OrderItemRequest item : dto.getItems()) {
-//			Long roomTypeId = item.getRoomTypeId();
-//			int quantity = item.getQuantity();
-//			int available = roomAvailabilityService.getAvailableCount(roomTypeId, newCheckIn, newCheckOut, orderId);
-//			if (quantity > available) {
-//				throw new RuntimeException("房型 " + roomTypeId + " 剩餘 " + available + " 間，無法更新。");
-//			}
-//		}
-//		// 4. 清空舊的 OrderItems
-//		order.getOrderItems().clear();
-//		// 5. 更新訂單基本資料，並加到 OrderItems 裡
-//		order.setCheckInDate(newCheckIn);
-//		order.setCheckOutDate(newCheckOut);
-//		BigDecimal total = BigDecimal.ZERO;
-//		for (OrderItemRequest itemDto : dto.getItems()) {
-//			RoomType roomType = roomTypeRepository.findById(itemDto.getRoomTypeId())
-//					.orElseThrow(() -> new RuntimeException("找不到房型：" + itemDto.getRoomTypeId()));
-//
-//			BigDecimal subtotal = roomType.getPrice().multiply(BigDecimal.valueOf(itemDto.getQuantity()));
-//			total = total.add(subtotal);
-//
-//			OrderItem newItem = new OrderItem();
-//			newItem.setOrder(order);
-//			newItem.setRoomType(roomType);
-//			newItem.setQuantity(itemDto.getQuantity());
-//			newItem.setPricePerRoom(roomType.getPrice());
-//			newItem.setSubtotal(subtotal);
-//			order.getOrderItems().add(newItem);
-//		}
-//		// 6. 設定新的總價
-//		order.setTotalPrice(total);
-//		// 7. 儲存
-//		orderRepository.save(order); // cascade OrderItems
-//		// 8. 回傳更新後的資料
-//		return toResponseDto(order);
 
 		// 若有送日期，才更新
 		if (dto.getCheckInDate() != null) {

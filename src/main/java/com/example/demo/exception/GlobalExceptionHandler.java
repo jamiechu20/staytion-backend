@@ -69,8 +69,4 @@ public class GlobalExceptionHandler {
 		error.put("message", ex.getMessage());
 		return new ResponseEntity<>(error, status);
 	}
-//	@ExceptionHandler(JwtAuthException.class)
-//	public ResponseEntity<String> handleJwtException(JwtAuthException e) {
-//		return ResponseEntity.status(HttpStatus.FORBIDDEN).body("權限被拒：" + e.getMessage()); // 403
-//	}
 }

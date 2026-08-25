@@ -402,21 +402,23 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | 🚧 進行中 — `GlobalExceptionHandler.java` 已隨 §3.3 解除註解、`SecurityConfig.java` 舊 filterChain 也已隨 §1.3 清除。**`OrderService.java`（整檔）、`exception/JwtAuthException.java`（空類別死碼）、`BookingService.updateBooking` 內約 40 行註解區塊仍未清理**。 |
-| **位置** | `OrderService.java`（整個檔案被註解）、`GlobalExceptionHandler.java`（整個檔案被註解）、`BookingService.java:183-222`（大塊 updateBooking 邏輯被註解）、`SecurityConfig.java:23-62`（舊的 filterChain 被註解） |
+| **狀態** | ✅ 已完成（2026-08-27） — 複查後修正一處先前記錄錯誤：`GlobalExceptionHandler.java` 早在 §3.3（2026-07-09）就已解除註解、正常運作，**不是死碼**，本項先前的「位置」清單誤植了這個檔案，予以移除。實際刪除的死碼：`OrderService.java`（整檔死碼，251 行）、`OrderController.java`（整檔死碼，複查時新發現——功能已被 `AdminOrderController`/`UserOrderController` 取代，全檔案被註解且無任何呼叫端）、`exception/JwtAuthException.java`（空類別死碼）、`EcpayController.java` 第 1-190 行（舊版類別）皆已整個刪除；`GlobalExceptionHandler.java` 內對應 `JwtAuthException` 的 2 行殘留註解一併移除；`BookingService.updateBooking` 內約 40 行的舊版註解邏輯已清除，保留下方實際生效的版本。`SecurityConfig.java` 舊 filterChain 已隨 §1.3 清除，複查確認無殘留。 |
+| **位置** | ~~`OrderService.java`~~、~~`OrderController.java`~~、~~`exception/JwtAuthException.java`~~（皆已刪除）、`BookingService.java`（`updateBooking`，死碼區塊已清除）、~~`EcpayController.java` 第 1-190 行~~（已刪除）、`AdminOrderController.java`/`AdminOrderService.java`（死碼端點與方法已清除） |
 | **嚴重度** | 🟡 Med |
 
 **問題說明**：  
 整個 `OrderService.java` 被 `//` 註解（251 行）但仍在 codebase 中。這不是「做到一半未完成」，而是已經被 `BookingService` 取代但忘了清理。死碼增加閱讀負擔，也讓讀者不確定哪個才是正在使用的版本。git 歷史本身就是「刪除前的紀錄」，不需要靠 comment 保存舊程式碼。
 
-**建議方向**：  
-刪除完全被註解的檔案和函式；`BookingService` 中未完成的 `updateBooking` 邏輯如果還需要完成，應開 TODO comment 而非留著整塊 comment block。
+**建議方向（已執行）**：  
+刪除完全被註解的檔案和函式；`BookingService` 中舊版已被取代的 `updateBooking` 註解邏輯已清除，只保留實際生效的版本。
 
-> **補充（2026-07-09 新增，處理 §3.3 時發現）**：`exception/JwtAuthException.java` 是個空類別（連 `extends RuntimeException` 都沒有），且全專案沒有任何地方真的拋出它，`GlobalExceptionHandler` 裡對應的 handler 也一直被註解著。屬於死碼，待本階段清理時一併刪除。
+> **補充（2026-07-09 新增，處理 §3.3 時發現）**：`exception/JwtAuthException.java` 是個空類別（連 `extends RuntimeException` 都沒有），且全專案沒有任何地方真的拋出它，`GlobalExceptionHandler` 裡對應的 handler 也一直被註解著。屬於死碼，已刪除（詳見上方狀態欄）。
 
-> **補充（2026-07-30 新增，處理 §3.2 時發現）**：`EcpayController.java` 第 1-215 行是一整份被註解掉的舊版 `EcpayController` 類別（含舊的 import、舊的 Ecpay 串接邏輯），實際生效的類別從第 220 行才開始。屬於死碼，待本階段清理時一併刪除。
+> **補充（2026-07-30 新增，處理 §3.2 時發現）**：`EcpayController.java` 第 1-215 行是一整份被註解掉的舊版 `EcpayController` 類別（含舊的 import、舊的 Ecpay 串接邏輯），實際生效的類別從第 220 行才開始。屬於死碼，已刪除（詳見上方狀態欄；實際刪除範圍複查後確認為第 1-190 行）。
 
----
+> **補充（2026-08-27，處理本項時發現）**：`OrderController.java` 整個檔案也是被 `//` 註解的死碼，跟 `OrderService.java` 是同一批被取代的舊實作（後台訂單管理已由 `AdminOrderController`+`AdminOrderService`、`UserOrderController`+`UserOrderService` 取代），先前稽核清單漏列，複查時一併發現並刪除。
+
+> **補充（2026-08-27，處理 `AdminOrderController` 時發現）**：`AdminOrderController.java` 底部也有三段被註解的端點：① `getAll()`（對應 `AdminOrderService.getAllOrders()`）——這個 controller 端點被註解，但它呼叫的 service 方法本身沒被註解、是活的程式碼，只是唯一的呼叫端不存在，變成孤兒方法；已確認有 `getOrdersByOwnerPaged()`（分頁、依 `ownerId` 過濾）這個更安全的替代版本，故 controller 端點與 `AdminOrderService.getAllOrders()` 一併刪除。② `getMonthlyRevenue()`、`getOrderTrend()`——這兩個在 Service 端（`AdminOrderService`）本身也已被註解，且確認 `StatisticsController` 已有功能相同、但多了 `ownerId` 過濾（原版本不分飯店、任何人都能查全站營收/訂單趨勢，安全性較差）的替代版本，確認為死碼，Controller + Service 兩側皆已刪除，順手清除因此變成未使用的 `ArrayList`/`HashMap`/`Map` import。
 
 ### 4.4 System.out.println 滿佈 production 程式碼
 
@@ -692,7 +694,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | ✅ | 修復 `FirebaseConfig` 的 `javax` → `jakarta` import | ⚡ Fix-it-faster | 低 | [§4.7](#47-javaxannotation-vs-jakartaannotation) |
 | ✅ | 修復 `ReviewService` 日期過濾 bug | ⚡ Fix-it-faster | 低 | [§4.6](#46-reviewservice-的日期過濾-bug) |
 | ✅ | 統一 CORS 設定，移除分散的 `@CrossOrigin` | ⚡ Fix-it-faster | 低 | [§1.5](#15-cors-設定不一致websocket-完全開放) |
-| 🚧 | 刪除死碼（`OrderService.java`、大量 comment blocks） | ⚡ Fix-it-faster | 低 | [§4.3](#43-大量被註解的死碼) |
+| ✅ | 刪除死碼（`OrderService.java`、大量 comment blocks） | ⚡ Fix-it-faster | 低 | [§4.3](#43-大量被註解的死碼) |
 | ⬜ | 替換 `System.out.println` 為 SLF4J Logger | ⚡ Fix-it-faster | 低（但面試表現重要） | [§4.4](#44-systemoutprintln-滿佈-production-程式碼) |
 | ⬜ | 整合 Arvin 系列到對應 class，刪除命名類別 | ⚡ Fix-it-faster | 低 | [§4.2](#42-隊友名字出現在類別名稱中) |
 | ⬜ | 重命名 package 為 `com.staytion.backend` | ⚡ Fix-it-faster | 低 | [§4.1](#41-package-名稱仍是-spring-initializr-預設值) |

@@ -2,10 +2,7 @@ package com.example.demo.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,11 +22,6 @@ import com.example.demo.repository.PaymentRepository;
 public class AdminOrderService {
 
 	private final OrderRepository orderRepository;
-
-	// 查全部訂單
-	public List<OrderResponseDto> getAllOrders() {
-		return orderRepository.findAll().stream().map(OrderMapper::toDto).toList();
-	}
 
 	// 查某使用者的訂單（後台）
 	public Page<OrderResponseDto> getOrdersByHotelOwner(Long ownerId, Pageable pageable) {
@@ -84,40 +76,5 @@ public class AdminOrderService {
 		}
 		orderRepository.deleteById(id);
 	}
-
-//	// 月營收
-//	public List<Map<String, Object>> getMonthlyRevenue(int year) {
-//		return orderRepository.getMonthlyRevenue(year);
-//	}
-//
-//	// 訂單趨勢
-//	public List<Map<String, Object>> getOrderTrend(LocalDate start, LocalDate end) {
-//		LocalDateTime startDateTime = start.atStartOfDay();
-//		LocalDateTime endDateTime = end.plusDays(1).atStartOfDay(); // 包含整天
-//
-//		List<Map<String, Object>> rawData = orderRepository.getOrderTrend(startDateTime, endDateTime);
-//
-//		// 將資料轉為 Map<LocalDate, Long>
-//		Map<LocalDate, Long> trendMap = new HashMap<>();
-//		for (Map<String, Object> row : rawData) {
-//			LocalDate date = ((java.sql.Date) row.get("date")).toLocalDate();
-//			Long count = (Long) row.get("orderCount");
-//			trendMap.put(date, count);
-//		}
-//
-//		// 建立完整日期範圍，補 0
-//		List<Map<String, Object>> result = new ArrayList<>();
-//		LocalDate current = start;
-//		while (!current.isAfter(end)) {
-//			Long count = trendMap.getOrDefault(current, 0L);
-//			Map<String, Object> entry = new HashMap<>();
-//			entry.put("date", current);
-//			entry.put("orderCount", count);
-//			result.add(entry);
-//			current = current.plusDays(1);
-//		}
-//
-//		return result;
-//	}
 
 }
