@@ -24,9 +24,9 @@ import com.example.demo.repository.RoomTypeRepository;
 
 @Service
 @RequiredArgsConstructor
-public class ArvinRoomTypeService {
+public class AdminRoomTypeService {
 
-    private static final Logger log = LoggerFactory.getLogger(ArvinRoomTypeService.class);
+    private static final Logger log = LoggerFactory.getLogger(AdminRoomTypeService.class);
 
     private final RoomTypeRepository roomTypeRepository;
 

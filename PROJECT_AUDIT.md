@@ -310,7 +310,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | 🚧 進行中（commit `e068d79`，2026-07-02；Controller 部分 2026-07-30 更新） — 全部 21 個 Service 類別已改為建構子注入（`OrderService.java` 除外，該檔為死碼待 §4.3 一併刪除）。**20 個 Controller 中，16 個已改為建構子注入 + `@RequiredArgsConstructor`**（`AmenityController`、`AdminOrderController`、`BookingController`、`ChatController`、`ChatRoomController`、`EcpayController`、`FavoriteController`、`HomeController`、`HotelController`、`LocationController`、`MessageController`、`ReviewController`、`RoomAvailabilityController`、`RoomTypeController`、`StatisticsController`、`UserController`、`UserOrderController`）。**剩餘 3 個維持原樣，皆為刻意跳過**：`ArvinHotelController`、`ArvinRoomTypeController`（待 §4.2 合併刪除時一併處理，避免白工）、`OrderController`（整檔死碼，待 §4.3 刪除）。`JwtAuthenticationFilter` 的 `userRepository` 複查後發現其實已經是 `final`（先前補充筆記已過時，可能在更早的修改中已一併處理），故此項已完成。 |
+| **狀態** | ✅ 已完成（2026-08-28） — 全部 21 個 Service 類別已改為建構子注入（原 `OrderService.java` 為死碼，已隨 §4.3 刪除）。**Controller 部分**：16 個已於 2026-07-30 改為建構子注入 + `@RequiredArgsConstructor`（`AmenityController`、`AdminOrderController`、`BookingController`、`ChatController`、`ChatRoomController`、`EcpayController`、`FavoriteController`、`HomeController`、`HotelController`、`LocationController`、`MessageController`、`ReviewController`、`RoomAvailabilityController`、`RoomTypeController`、`StatisticsController`、`UserController`、`UserOrderController`）；原本刻意跳過的 `ArvinHotelController`、`ArvinRoomTypeController` 已於處理 §4.2（改名為 `AdminHotelController`、`AdminRoomTypeController`）時一併改為建構子注入；原本刻意跳過的 `OrderController` 為整檔死碼，已隨 §4.3 刪除。至此全專案 Controller/Service 皆已無欄位注入。`JwtAuthenticationFilter` 的 `userRepository` 複查後發現其實已經是 `final`（先前補充筆記已過時，可能在更早的修改中已一併處理），故此項已完成。 |
 | **位置** | `ReviewService.java`、`ChatRoomService.java`、`HotelServiceImpl.java`、`UserService.java`、`AuthService.java`、`BookingService.java`、`SecurityConfig.java`、`AuthController.java`（混合）等 |
 | **嚴重度** | 🟡 Med |
 
@@ -386,15 +386,15 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ⬜ 未開始 |
-| **位置** | `ArvinHotelService.java`、`ArvinHotelController.java`、`ArvinRoomTypeService.java`、`ArvinRoomTypeController.java` |
+| **狀態** | ✅ 已完成（2026-08-28） |
+| **位置** | ~~`ArvinHotelService.java`~~ → `AdminHotelService.java`、~~`ArvinHotelController.java`~~ → `AdminHotelController.java`、~~`ArvinRoomTypeService.java`~~ → `AdminRoomTypeService.java`、~~`ArvinRoomTypeController.java`~~ → `AdminRoomTypeController.java` |
 | **嚴重度** | 🟡 Med（Portfolio 專案中非常不妥） |
 
 **問題說明**：  
-這是團隊分工時用名字區分負責範圍的做法，但在作品集中留著，面試官看到會有疑問。這四個類別實作了飯店和房型的 CRUD，應該合併到 `HotelController`/`HotelService` 和 `RoomTypeController`/`RoomTypeService`（這些已存在）。
+這是團隊分工時用名字區分負責範圍的做法，但在作品集中留著，面試官看到會有疑問。這四個類別實作了飯店和房型的**後台管理** CRUD（`/api/admin/hotels`、`/api/admin/roomTypes`）。
 
-**建議方向**：  
-將 Arvin 系列的功能合併到對應的無前綴 class 後，刪除這四個 class。
+**建議方向（已調整並執行）**：  
+原稽核建議合併進現有 `HotelController`/`HotelService`、`RoomTypeController`/`RoomTypeService`，但複查後發現這兩者是**前台搜尋**用途（`HotelService` 甚至只是唯讀查詢的 interface），跟 Arvin 系列的後台管理 CRUD 性質不同，硬併會讓前台/後台邏輯混在同一個 class。改採本專案已有的 `AdminOrderController`/`AdminOrderService` 命名慣例（見 §4.3），單純改名為 `AdminHotelController`/`AdminHotelService`、`AdminRoomTypeController`/`AdminRoomTypeService`，不動任何邏輯。全專案搜尋確認無其他地方引用 `Arvin` 相關類別名稱。順手把這兩個 Controller 從欄位注入（`@Autowired` field）改為建構子注入 + `@RequiredArgsConstructor`——這正是 §4.1 當時刻意跳過、標記「待 §4.2 一併處理」的項目。`mvn compile` 確認編譯通過。
 
 ---
 
@@ -700,7 +700,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | ✅ | 統一 CORS 設定，移除分散的 `@CrossOrigin` | ⚡ Fix-it-faster | 低 | [§1.5](#15-cors-設定不一致websocket-完全開放) |
 | ✅ | 刪除死碼（`OrderService.java`、大量 comment blocks） | ⚡ Fix-it-faster | 低 | [§4.3](#43-大量被註解的死碼) |
 | ✅ | 替換 `System.out.println` 為 SLF4J Logger | ⚡ Fix-it-faster | 低（但面試表現重要） | [§4.4](#44-systemoutprintln-滿佈-production-程式碼) |
-| ⬜ | 整合 Arvin 系列到對應 class，刪除命名類別 | ⚡ Fix-it-faster | 低 | [§4.2](#42-隊友名字出現在類別名稱中) |
+| ✅ | 整合 Arvin 系列到對應 class，刪除命名類別 | ⚡ Fix-it-faster | 低 | [§4.2](#42-隊友名字出現在類別名稱中) |
 | ⬜ | 重命名 package 為 `com.staytion.backend` | ⚡ Fix-it-faster | 低 | [§4.1](#41-package-名稱仍是-spring-initializr-預設值) |
 | ⬜ | Review/Message 使用者輸入加輸出端防護（Stored XSS） | 🎓 Learn-it-myself | 高（User Center 模組 + 安全性核心概念） | [§1.8](#18-reviewmessage-使用者輸入缺乏輸出端防護stored-xss-風險2026-08-25-新發現聊天討論-corscsrfxss-差異時) |
 | ⬜ | `MailService` 改用範本引擎，移除字串拼接組 HTML 的地雷寫法 | ⚡ Fix-it-faster | 低（現況安全，屬預防性技術債） | [§1.9](#19-mailservice-用字串拼接組-html-信件潛在地雷寫法2026-08-25-新發現同上) |

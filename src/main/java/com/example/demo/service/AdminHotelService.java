@@ -17,7 +17,7 @@ import com.example.demo.util.GeocodingService;
 
 @Service
 @RequiredArgsConstructor
-public class ArvinHotelService {
+public class AdminHotelService {
 
     private final HotelRepository hotelRepository;
 
@@ -32,14 +32,7 @@ public class ArvinHotelService {
     private final GeocodingService geocodingService;
 
     private final AmenityRepository amenityRepository;
-
-//    查詢全部飯店(但應該不需要?)
-//    public List<HotelResponseDto> getAllHotels() {
-//        return hotelRepository.findAll()
-//                .stream()
-//                .map(this::toDto)
-//                .collect(Collectors.toList());
-//    }
+    
     
     // 查詢指定使用者的飯店
     public List<HotelResponseDto> getHotelsByOwner(Long ownerId) {

@@ -2,7 +2,6 @@ package com.example.demo.controller;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,17 +15,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.request.RoomTypeRequestDto;
 import com.example.demo.dto.response.RoomTypeResponseDto;
-import com.example.demo.service.ArvinRoomTypeService;
+import com.example.demo.service.AdminRoomTypeService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/roomTypes")
 @Tag(name = "Admin RoomType Management", description = "後台房型管理 API")
-public class ArvinRoomTypeController {
+public class AdminRoomTypeController {
 
-    @Autowired
-    private ArvinRoomTypeService arvinRoomTypeService;
+    private final AdminRoomTypeService adminRoomTypeService;
 
     @Operation(
     	    summary = "取得單一房型",
@@ -35,7 +35,7 @@ public class ArvinRoomTypeController {
     	)
     	@GetMapping("/{id}")
     	public RoomTypeResponseDto getById(@PathVariable Long id) {
-    	    return arvinRoomTypeService.getRoomTypeById(id);
+    	    return adminRoomTypeService.getRoomTypeById(id);
     	}
 
 
@@ -46,7 +46,7 @@ public class ArvinRoomTypeController {
     )
     @GetMapping("/hotel/{hotelId}")
     public List<RoomTypeResponseDto> getByHotel(@PathVariable Long hotelId) {
-        return arvinRoomTypeService.getRoomTypesByHotel(hotelId);
+        return adminRoomTypeService.getRoomTypesByHotel(hotelId);
     }
 
     @Operation(
@@ -59,7 +59,7 @@ public class ArvinRoomTypeController {
             @RequestParam(defaultValue = "") String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return arvinRoomTypeService.search(keyword, page, size);
+        return adminRoomTypeService.search(keyword, page, size);
     }
 
     @Operation(
@@ -69,7 +69,7 @@ public class ArvinRoomTypeController {
     )
     @PostMapping
     public RoomTypeResponseDto createOrUpdate(@RequestBody RoomTypeRequestDto dto) {
-        return arvinRoomTypeService.saveRoomType(dto);
+        return adminRoomTypeService.saveRoomType(dto);
     }
 
     @Operation(
@@ -79,7 +79,7 @@ public class ArvinRoomTypeController {
     )
     @PutMapping("/{id}")
     public RoomTypeResponseDto update(@PathVariable Long id, @RequestBody RoomTypeRequestDto dto) {
-        return arvinRoomTypeService.updateRoomType(id, dto);
+        return adminRoomTypeService.updateRoomType(id, dto);
     }
 
     @Operation(
@@ -89,7 +89,7 @@ public class ArvinRoomTypeController {
     )
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
-        arvinRoomTypeService.deleteRoomType(id);
+        adminRoomTypeService.deleteRoomType(id);
     }
 
     /*
