@@ -1,6 +1,8 @@
 package com.example.demo.service;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -12,6 +14,8 @@ import jakarta.mail.internet.MimeMessage;
 @Service
 @RequiredArgsConstructor
 public class MailService {
+
+	private static final Logger log = LoggerFactory.getLogger(MailService.class);
 
 	private final JavaMailSender mailSender;
 	
@@ -40,9 +44,9 @@ public class MailService {
 
             mailSender.send(message);
 
-            System.out.println("郵件已成功發送到: " + to);
+            log.info("郵件已成功發送到: {}", to);
         } catch (Exception e) {
-            System.err.println("發送郵件失敗: " + e.getMessage());
+            log.error("發送郵件失敗", e);
             throw new RuntimeException("發送郵件失敗", e);
         }
     }

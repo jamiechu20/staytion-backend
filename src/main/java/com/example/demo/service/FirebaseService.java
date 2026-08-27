@@ -3,10 +3,14 @@ package com.example.demo.service;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class FirebaseService {
+
+    private static final Logger log = LoggerFactory.getLogger(FirebaseService.class);
 
     // 用來創建新用戶
     public String createFirebaseUser(String email, String firstName, String lastName) {
@@ -24,7 +28,7 @@ public class FirebaseService {
             return userRecord.getUid();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("創建 Firebase 使用者失敗", e);
             return null;
         }
     }
@@ -39,7 +43,7 @@ public class FirebaseService {
             // 根據 UID 刪除 Firebase 使用者
             FirebaseAuth.getInstance().deleteUser(uid);
 
-            System.out.println("Firebase 使用者已刪除: " + email);
+            log.info("Firebase 使用者已刪除: {}", email);
         } catch (Exception e) {
             throw new RuntimeException("刪除 Firebase 使用者失敗: " + e.getMessage(), e);
         }

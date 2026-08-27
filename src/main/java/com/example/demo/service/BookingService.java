@@ -7,6 +7,8 @@ import com.example.demo.dto.OrderItemResponse;
 import com.example.demo.entity.*;
 import com.example.demo.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class BookingService {
+
+	private static final Logger log = LoggerFactory.getLogger(BookingService.class);
 
 	private final UserRepository userRepository;
 	private final RoomTypeRepository roomTypeRepository;
@@ -236,7 +240,7 @@ public class BookingService {
 	public Order updateOrderStatus(Long orderId, Order.OrderStatus newStatus) {
 		return orderRepository.findById(orderId).map(order -> {
 			order.setStatus(newStatus);
-			System.out.println("BookingService: 訂單 " + orderId + " 狀態已更新為「" + newStatus.name() + "」。");
+			log.info("BookingService: 訂單 {} 狀態已更新為「{}」。", orderId, newStatus.name());
 			return orderRepository.save(order);
 		}).orElseThrow(() -> new RuntimeException("Order not found with ID: " + orderId));
 	}

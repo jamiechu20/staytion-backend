@@ -7,6 +7,8 @@ import com.example.demo.repository.HotelRepository;
 import com.example.demo.repository.MessageRepository;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -17,6 +19,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ChatRoomService {
+    private static final Logger log = LoggerFactory.getLogger(ChatRoomService.class);
+
     private final ChatRoomRepository chatRoomRepository;
 
     private final UserRepository userRepository;
@@ -53,10 +57,10 @@ public class ChatRoomService {
 
     // 取得某用戶相關的聊天室列表
     public List<ChatRoomDto> getChatRoomsForUser(Long userId) {
-        System.out.println("取得聊天室列表，使用者 userId = " + userId);
+        log.debug("取得聊天室列表，使用者 userId = {}", userId);
 
         List<ChatRoom> chatRooms = chatRoomRepository.findByUser1_IdOrUser2_Id(userId, userId);
-        System.out.println("查到聊天室筆數: " + chatRooms.size());
+        log.debug("查到聊天室筆數: {}", chatRooms.size());
         return chatRooms.stream().map(room -> {
             ChatRoomDto dto = new ChatRoomDto();
             dto.setChatRoomId(room.getId());

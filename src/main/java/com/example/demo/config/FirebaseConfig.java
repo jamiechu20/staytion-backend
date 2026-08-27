@@ -3,6 +3,8 @@ package com.example.demo.config;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
 
 import jakarta.annotation.PostConstruct;
@@ -11,10 +13,12 @@ import java.io.InputStream;
 @Configuration
 public class FirebaseConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(FirebaseConfig.class);
+
     @PostConstruct
     public void init() {
         try {
-            System.out.println("開始初始化 Firebase");
+            log.debug("開始初始化 Firebase");
             InputStream serviceAccount = getClass().getClassLoader()
                     .getResourceAsStream("firebase/staytion-serviceAccountKey.json");
 
@@ -27,11 +31,11 @@ public class FirebaseConfig {
 
             if (FirebaseApp.getApps().isEmpty()) {
                 FirebaseApp.initializeApp(options);
-                System.out.println("Firebase 初始化完成");
+                log.debug("Firebase 初始化完成");
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Firebase 初始化失敗", e);
         }
     }
 }

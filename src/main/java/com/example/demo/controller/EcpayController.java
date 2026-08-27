@@ -10,6 +10,8 @@ import com.example.demo.util.EcpayUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
@@ -27,6 +29,8 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 @RequestMapping("/api/payments")
 public class EcpayController {
+
+    private static final Logger log = LoggerFactory.getLogger(EcpayController.class);
 
     private final BookingService bookingService;
     private final PaymentService paymentService;
@@ -52,8 +56,8 @@ public class EcpayController {
         String combinedId = "O" + encodedOrderId + "P" + encodedPaymentId;
 
         if (combinedId.length() > 20) {
-            System.err.println("❌ 嚴重警告：編碼後的 MerchantTradeNo (" + combinedId + ") 長度為 " + combinedId.length()
-                    + "，超過 20 字元限制！這將導致交易失敗或資料錯誤。");
+            log.error("編碼後的 MerchantTradeNo ({}) 長度為 {}，超過 20 字元限制！這將導致交易失敗或資料錯誤。", combinedId,
+                    combinedId.length());
             throw new RuntimeException("Encoded MerchantTradeNo exceeds 20 character limit. Current length: "
                     + combinedId.length() + ", Max allowed: 20");
         }
@@ -73,11 +77,11 @@ public class EcpayController {
                 Long paymentId = Long.parseLong(paymentIdStr);
                 return new Long[]{orderId, paymentId};
             } catch (NumberFormatException e) {
-                System.err.println("解碼 MerchantTradeNo 時數字格式錯誤: " + encodedTradeNo + " - " + e.getMessage());
+                log.warn("解碼 MerchantTradeNo 時數字格式錯誤: {}", encodedTradeNo, e);
                 return null;
             }
         }
-        System.err.println("解碼 MerchantTradeNo 格式不符或不完整: " + encodedTradeNo);
+        log.warn("解碼 MerchantTradeNo 格式不符或不完整: {}", encodedTradeNo);
         return null;
     }
 
@@ -88,14 +92,7 @@ public class EcpayController {
     public void processPayment(@RequestBody PaymentProcessRequest request, HttpServletResponse response)
             throws IOException {
 
-        // 除錯日誌
-        System.out.println("--- 收到 /api/payments/process 請求 ---");
-        System.out.println("Request Body: " + request); // 這會印出 PaymentProcessRequest 的 toString()
-        if (request != null) {
-            System.out.println("Received orderId: " + request.getOrderId());
-            System.out.println("Received paymentMethod: " + request.getPaymentMethod());
-        }
-        System.out.println("------------------------------------");
+        log.debug("收到 /api/payments/process 請求, Request Body: {}", request);
 
         Long orderDbId = request.getOrderId();
         String paymentMethod = request.getPaymentMethod();
@@ -110,7 +107,7 @@ public class EcpayController {
             return;
         }
 
-        System.out.println("收到支付請求，目標訂單 ID: " + orderDbId);
+        log.info("收到支付請求，目標訂單 ID: {}", orderDbId);
 
         Long paymentDbId = null;
         BigDecimal totalAmount = BigDecimal.ZERO;
@@ -122,7 +119,7 @@ public class EcpayController {
             // BookingResponse
 
             if (bookingResponseDto == null) {
-                System.err.println("找不到訂單 ID: " + orderDbId + " 對應的 BookingResponse。");
+                log.warn("找不到訂單 ID: {} 對應的 BookingResponse。", orderDbId);
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "Booking not found for ID: " + orderDbId);
                 return;
             }
@@ -135,23 +132,23 @@ public class EcpayController {
 
             // 檢查訂單狀態
             if (!Order.OrderStatus.PENDING.name().equals(orderStatusStr)) {
-                System.err.println("訂單 " + orderDbId + " 狀態不為 PENDING，無法支付。當前狀態: " + orderStatusStr);
+                log.warn("訂單 {} 狀態不為 PENDING，無法支付。當前狀態: {}", orderDbId, orderStatusStr);
                 response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Order is not in PENDING status.");
                 return;
             }
 
             // 檢查 paymentDbId 是否存在
             if (paymentDbId == null) {
-                System.err.println("BookingResponse (ID: " + orderDbId + ") 中未包含 Payment ID。");
+                log.error("BookingResponse (ID: {}) 中未包含 Payment ID。", orderDbId);
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                         "Payment ID not found within BookingResponse.");
                 return;
             }
 
-            System.out.println("已獲取訂單 (DB ID: " + orderDbId + ") 關聯的支付記錄 (DB ID: " + paymentDbId + ")");
+            log.debug("已獲取訂單 (DB ID: {}) 關聯的支付記錄 (DB ID: {})", orderDbId, paymentDbId);
 
         } catch (RuntimeException e) {
-            System.err.println("處理訂單或獲取支付記錄失敗: " + e.getMessage());
+            log.error("處理訂單或獲取支付記錄失敗", e);
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "Failed to process order or retrieve payment record. Error: " + e.getMessage());
             return;
@@ -162,7 +159,7 @@ public class EcpayController {
         try {
             merchantTradeNo = encodeOrderAndPaymentIds(orderDbId, paymentDbId);
         } catch (RuntimeException e) {
-            System.err.println("編碼 MerchantTradeNo 失敗: " + e.getMessage());
+            log.error("編碼 MerchantTradeNo 失敗", e);
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     "Failed to encode MerchantTradeNo: " + e.getMessage());
             return;
@@ -192,7 +189,7 @@ public class EcpayController {
 
         response.setContentType("text/html;charset=UTF-8");
         response.getWriter().print(htmlForm);
-        System.out.println("已生成綠界表單並回傳給前端，綠界交易號：" + merchantTradeNo);
+        log.info("已生成綠界表單並回傳給前端，綠界交易號：{}", merchantTradeNo);
     }
 
     /**
@@ -201,7 +198,7 @@ public class EcpayController {
     @RequestMapping(value = "/return", method = {RequestMethod.GET, RequestMethod.POST})
     @ResponseBody
     public String handleReturn(HttpServletRequest request) {
-        System.out.println("收到綠界後台通知...");
+        log.info("收到綠界後台通知...");
 
         Map<String, String> ecpayResponseParams = new HashMap<>();
         Enumeration<String> parameterNames = request.getParameterNames();
@@ -215,8 +212,8 @@ public class EcpayController {
         String tradeAmt = ecpayResponseParams.get("TradeAmt");
         String paymentDate = ecpayResponseParams.get("PaymentDate");
 
-        System.out.println("綠界通知 - 綠界交易號 (編碼): " + merchantTradeNo + ", 狀態碼: " + rtnCode + ", 金額: " + tradeAmt
-                + ", 交易時間: " + paymentDate);
+        log.info("綠界通知 - 綠界交易號 (編碼): {}, 狀態碼: {}, 金額: {}, 交易時間: {}", merchantTradeNo, rtnCode, tradeAmt,
+                paymentDate);
 
         String receivedCheckMacValue = ecpayResponseParams.get("CheckMacValue");
         ecpayResponseParams.remove("CheckMacValue");
@@ -224,13 +221,13 @@ public class EcpayController {
         String expectedCheckMacValue = EcpayUtil.generateCheckMacValue(ecpayResponseParams, HASH_KEY, HASH_IV);
 
         if (!expectedCheckMacValue.equalsIgnoreCase(receivedCheckMacValue)) {
-            System.err.println("❌ CheckMacValue 驗證失敗，可能的偽造請求！綠界交易號 (編碼)：" + merchantTradeNo);
+            log.warn("CheckMacValue 驗證失敗，可能的偽造請求！綠界交易號 (編碼)：{}", merchantTradeNo);
             return "0|CheckMacValue Error";
         }
 
         Long[] ids = decodeOrderAndPaymentIds(merchantTradeNo);
         if (ids == null || ids.length != 2) {
-            System.err.println("❌ 無法從 MerchantTradeNo 解碼 Order ID 和 Payment ID：" + merchantTradeNo);
+            log.warn("無法從 MerchantTradeNo 解碼 Order ID 和 Payment ID：{}", merchantTradeNo);
             return "0|Decode Error";
         }
         Long orderId = ids[0];
@@ -240,12 +237,12 @@ public class EcpayController {
         try {
             payment = paymentService.findPaymentById(paymentId).orElse(null);
         } catch (Exception e) {
-            System.err.println("查詢 Payment (ID: " + paymentId + ") 失敗: " + e.getMessage());
+            log.error("查詢 Payment (ID: {}) 失敗", paymentId, e);
             return "0|DB Query Error";
         }
 
         if (payment == null) {
-            System.err.println("❌ 資料庫中找不到對應的支付記錄！Payment ID：" + paymentId + ", Order ID: " + orderId);
+            log.warn("資料庫中找不到對應的支付記錄！Payment ID：{}, Order ID: {}", paymentId, orderId);
             return "0|Payment Not Found";
         }
 
@@ -253,45 +250,43 @@ public class EcpayController {
         // 如果您的 Payment 實體沒有直接關聯 Order，或者 Order 不包含 TotalPrice，
         // 您需要調整這裡的驗證邏輯，例如從 PaymentService 額外查詢 Order 資訊。
         if (payment.getOrder() == null || !payment.getOrder().getId().equals(orderId)) {
-            System.err.println(
-                    "❌ Payment 關聯的 Order ID 不符或 Order 不存在！Payment ID: " + paymentId + ", 解碼 Order ID: " + orderId);
+            log.warn("Payment 關聯的 Order ID 不符或 Order 不存在！Payment ID: {}, 解碼 Order ID: {}", paymentId, orderId);
             return "0|Order ID Mismatch";
         }
 
         BigDecimal orderTotalAmount = payment.getOrder().getTotalPrice();
         if (orderTotalAmount == null || orderTotalAmount.compareTo(new BigDecimal(tradeAmt)) != 0) {
-            System.err.println(
-                    "❌ 訂單金額不符！資料庫金額: " + orderTotalAmount + ", 綠界金額: " + tradeAmt + ", Payment ID：" + paymentId);
+            log.warn("訂單金額不符！資料庫金額: {}, 綠界金額: {}, Payment ID：{}", orderTotalAmount, tradeAmt, paymentId);
             return "0|Amount Mismatch";
         }
 
         if (payment.getStatus() == Payment.PaymentStatus.PAID) {
-            System.out.println("⚠️ 訂單 " + orderId + " 已是已付款狀態，重複通知。Payment ID: " + paymentId);
+            log.info("訂單 {} 已是已付款狀態，重複通知。Payment ID: {}", orderId, paymentId);
             return "1|OK";
         }
 
         if ("1".equals(rtnCode)) { // 綠界回傳 "1" 代表交易成功
             paymentService.updatePaymentMethod(paymentId, Payment.PaymentMethod.ECPAY);
             paymentService.updatePaymentStatus(paymentId, Payment.PaymentStatus.PAID);
-            System.out.println("✅ 訂單 " + orderId + " 已成功支付，更新支付記錄狀態為「已付款」。Payment ID: " + paymentId);
+            log.info("訂單 {} 已成功支付，更新支付記錄狀態為「已付款」。Payment ID: {}", orderId, paymentId);
 
             // 新增：更新訂單狀態為 CONFIRMED (現在由 BookingService 處理)
             try {
                 bookingService.updateOrderStatus(orderId, Order.OrderStatus.CONFIRMED);
-                System.out.println("EcpayController: 訂單 " + orderId + " 狀態已更新為「CONFIRMED」。");
+                log.info("EcpayController: 訂單 {} 狀態已更新為「CONFIRMED」。", orderId);
             } catch (Exception e) {
-                System.err.println("EcpayController: 更新訂單 " + orderId + " 狀態為 CONFIRMED 失敗: " + e.getMessage());
+                log.error("EcpayController: 更新訂單 {} 狀態為 CONFIRMED 失敗", orderId, e);
             }
 
         } else { // 交易失敗或取消
             paymentService.updatePaymentStatus(paymentId, Payment.PaymentStatus.CANCELED);
-            System.out.println("訂單 " + orderId + " 支付失敗，綠界狀態碼: " + rtnCode + "，更新支付記錄狀態。Payment ID: " + paymentId);
+            log.info("訂單 {} 支付失敗，綠界狀態碼: {}，更新支付記錄狀態。Payment ID: {}", orderId, rtnCode, paymentId);
             // 支付失敗時，通常訂單狀態可以改為 CANCELLED
             try {
                 bookingService.updateOrderStatus(orderId, Order.OrderStatus.CANCELED);
-                System.out.println("EcpayController: 訂單 " + orderId + " 狀態已更新為「CANCELED」。");
+                log.info("EcpayController: 訂單 {} 狀態已更新為「CANCELED」。", orderId);
             } catch (Exception e) {
-                System.err.println("EcpayController: 更新訂單 " + orderId + " 狀態為 CANCELED 失敗: " + e.getMessage());
+                log.error("EcpayController: 更新訂單 {} 狀態為 CANCELED 失敗", orderId, e);
             }
         }
 
@@ -326,7 +321,7 @@ public class EcpayController {
 //        }
 //        System.out.println("------------------------------------");
 
-        System.out.println("用戶從綠界支付頁面導回，準備跳轉到訂房成功頁面。");
+        log.debug("用戶從綠界支付頁面導回，準備跳轉到訂房成功頁面。");
         String merchantTradeNo = request.getParameter("MerchantTradeNo");
         String redirectUrl = "http://127.0.0.1:5500/pages/ecpay_success.html";
         if (merchantTradeNo != null && !merchantTradeNo.isEmpty()) {

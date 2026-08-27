@@ -7,6 +7,8 @@ import com.example.demo.entity.Payment.PaymentStatus;
 import com.example.demo.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,8 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
     private final PaymentRepository paymentRepository;
     
@@ -66,7 +70,7 @@ public class PaymentService {
             }
             return paymentRepository.save(payment);
         }
-        System.err.println("無法更新 Payment 狀態：找不到 ID 為 " + paymentId + " 的支付記錄。");
+        log.warn("無法更新 Payment 狀態：找不到 ID 為 {} 的支付記錄。", paymentId);
         return null;
     }
     
@@ -79,7 +83,7 @@ public class PaymentService {
     		
     		return paymentRepository.save(payment);
     	}
-    	System.err.println("無法更新 Payment 記錄：找不到 ID 為 " + paymentId + " 的付款方式。");
+    	log.warn("無法更新 Payment 記錄：找不到 ID 為 {} 的付款方式。", paymentId);
     	return null;
     }
 }

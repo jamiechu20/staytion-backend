@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.example.demo.exception.InvalidTokenException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +23,8 @@ import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtService {
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
+
     @Value("${jwt.secret}")
     private String jwtSecret;
 
@@ -62,7 +66,7 @@ public class JwtService {
             Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
             return claims.getSubject();
         } catch (JwtException e) {
-            e.printStackTrace();
+            log.error("Token 解析失敗", e);
             throw new RuntimeException("Token 解析失敗");
         }
     }
@@ -72,10 +76,10 @@ public class JwtService {
         try {
             Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
             Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
-            System.out.println("JWT Payload Claims: " + claims); //debug
+            log.debug("JWT Payload Claims: {}", claims);
             return claims.get("id", Long.class);
         } catch (Exception e) {
-            System.out.println("無法解析使用者 ID，錯誤訊息：" + e.getMessage());
+            log.debug("無法解析使用者 ID，錯誤訊息：{}", e.getMessage());
             throw new RuntimeException("無法解析使用者 ID");
         }
     }

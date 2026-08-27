@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 
 import com.example.demo.repository.RoomTypeRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.example.demo.dto.response.ChartData;
@@ -16,6 +18,8 @@ import com.example.demo.repository.OrderRepository;
 @Service
 @RequiredArgsConstructor
 public class StatisticsService {
+
+	private static final Logger log = LoggerFactory.getLogger(StatisticsService.class);
 
 	private final OrderRepository orderRepository;
 
@@ -83,9 +87,8 @@ public class StatisticsService {
 		summary.setOccupancyRate(occupancyRate);
 		summary.setAveragePrice(averagePrice);
 
-		// debug log
-		System.out.println(">>> occupancyRate = " + occupancyRate);
-		System.out.println(">>> averagePrice = " + averagePrice);
+		log.debug("occupancyRate = {}", occupancyRate);
+		log.debug("averagePrice = {}", averagePrice);
 
 		return summary;
 	}

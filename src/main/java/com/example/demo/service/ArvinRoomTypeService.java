@@ -6,6 +6,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +25,8 @@ import com.example.demo.repository.RoomTypeRepository;
 @Service
 @RequiredArgsConstructor
 public class ArvinRoomTypeService {
+
+    private static final Logger log = LoggerFactory.getLogger(ArvinRoomTypeService.class);
 
     private final RoomTypeRepository roomTypeRepository;
 
@@ -86,8 +90,8 @@ public class ArvinRoomTypeService {
                 ? new HashSet<>()
                 : new HashSet<>(amenityRepository.findAllById(dto.getAmenityIds()));
 
-        System.out.println("amenityIds: " + dto.getAmenityIds());
-        System.out.println("查到的Amenity: " + amenities.size());
+        log.debug("amenityIds: {}", dto.getAmenityIds());
+        log.debug("查到的Amenity: {}", amenities.size());
 
         room.setRname(dto.getRname());
         room.setPrice(dto.getPrice());
@@ -104,7 +108,7 @@ public class ArvinRoomTypeService {
         room.setAmenities(amenities);
 
         RoomType saved = roomTypeRepository.save(room);
-        System.out.println("儲存後 amenities: " + saved.getAmenities().size());
+        log.debug("儲存後 amenities: {}", saved.getAmenities().size());
         return toDto(saved);
     }
 

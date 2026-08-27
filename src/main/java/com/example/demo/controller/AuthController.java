@@ -87,7 +87,6 @@ public class AuthController {
 		String email = body.get("email");
 		String link = FirebaseAuth.getInstance().generateEmailVerificationLink(email);
 		String html = "<p>請點擊以下連結完成帳號驗證：</p><a href=\"" + link + "\">驗證帳號</a>";
-		System.out.println(link);
 		mailService.sendHtmlMail(email, "重新寄發驗證信", html);
 		return ResponseEntity.ok(Map.of("message", "驗證信已寄出"));
 	}

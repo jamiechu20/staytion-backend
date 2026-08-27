@@ -8,6 +8,8 @@ import com.example.demo.repository.OrderRepository;
 import jakarta.transaction.Transactional;
 
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +19,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class OrderCleanupService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderCleanupService.class);
 
     private final OrderRepository orderRepository;
 
@@ -32,29 +36,29 @@ public class OrderCleanupService {
                 .findByStatusAndCreatedAtBefore(OrderStatus.PENDING, expiredBefore);
 
         if (expiredOrders.isEmpty()) {
-            System.out.println("沒有找到過期訂單需要取消。");
+            log.debug("沒有找到過期訂單需要取消。");
             return;
         }
 
-        System.out.println("正在自動取消過期訂單，共 " + expiredOrders.size() + " 筆...");
+        log.info("正在自動取消過期訂單，共 {} 筆...", expiredOrders.size());
 
         for (Order order : expiredOrders) {
             // 1. 將訂單狀態設定為 CANCELED
             order.setStatus(OrderStatus.CANCELED);
-            System.out.println("   - 訂單 ID " + order.getId() + " 狀態設定為 CANCELED。");
+            log.debug("訂單 ID {} 狀態設定為 CANCELED。", order.getId());
 
             // 2. 如果訂單有關聯的 Payment，也將其狀態設定為 CANCELED
             if (order.getPayment() != null && order.getPayment().getId() != null) {
                 Long paymentId = order.getPayment().getId();
                 try {
                     paymentService.updatePaymentStatus(paymentId, PaymentStatus.CANCELED);
-                    System.out.println("     - 支付記錄 ID " + paymentId + " 狀態已更新為 CANCELED。");
+                    log.debug("支付記錄 ID {} 狀態已更新為 CANCELED。", paymentId);
                 } catch (Exception e) {
                     // 記錄錯誤，但不阻止訂單本身的更新
-                    System.err.println("     - ❌ 警告：更新支付記錄 ID " + paymentId + " 狀態失敗: " + e.getMessage());
+                    log.warn("更新支付記錄 ID {} 狀態失敗", paymentId, e);
                 }
             } else {
-                System.out.println("     - 訂單 ID " + order.getId() + " 沒有關聯的支付記錄或支付 ID 為空，跳過支付狀態更新。");
+                log.debug("訂單 ID {} 沒有關聯的支付記錄或支付 ID 為空，跳過支付狀態更新。", order.getId());
             }
 
             // TODO: 可加上釋放房間庫存、清除鎖房資料等邏輯
@@ -63,6 +67,6 @@ public class OrderCleanupService {
         // 批量保存更新後的訂單
         orderRepository.saveAll(expiredOrders);
 
-        System.out.println("✅ 已自動取消過期訂單：" + expiredOrders.size() + " 筆。");
+        log.info("已自動取消過期訂單：{} 筆。", expiredOrders.size());
     }
 }

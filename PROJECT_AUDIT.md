@@ -424,17 +424,21 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ⬜ 未開始 — 目前仍有 16 個檔案含 `System.out.println`，包含優先度最高的 `JwtAuthenticationFilter.java:44`（明碼列印完整 JWT token）。 |
-| **位置** | 全 codebase 共 69 處（`grep -rn "System.out.println"` 結果） |
+| **狀態** | ✅ 已完成（2026-08-28） — 全 codebase（含 `JwtService.java` 其餘方法）的 `System.out.println`/`System.err.println`/`printStackTrace` 皆已改為 SLF4J Logger，含 token/claims/連結等敏感資訊一律 `DEBUG`；`JwtAuthenticationFilter.java` 原本直接印出完整 raw JWT token 那行已直接刪除，不降級成 DEBUG（因為 production 一旦誤開 DEBUG 或接上集中式日誌系統，token 就會被永久記錄下來，等同外洩憑證）。 |
+| **位置** | 全 codebase（13 個檔案：`JwtAuthenticationFilter`、`FirebaseConfig`、`AuthController`、`ChatRoomController`、`EcpayController`、`ArvinRoomTypeService`、`BookingService`、`ChatRoomService`、`FirebaseService`、`JwtService`、`MailService`、`OrderCleanupService`、`StatisticsService`、`PaymentService`） |
 | **嚴重度** | 🟡 Med |
 
 **問題說明**：  
 例如 `UserController.java:43-44` 的 `System.out.println("Authorization header: " + authHeader)` 會把完整的 JWT token 印到 log，這是敏感資訊洩漏。其他如 `AuthService.java:108`（印出 Firebase 驗證連結）、`JwtService.java:66`（印出完整 JWT claims）都有類似問題。
 
-**建議方向**：  
-全部替換為 SLF4J Logger（`LoggerFactory.getLogger(...)`），並為含 token 或 email 的 log 使用 DEBUG level，不在 production 中預設開啟。
+**建議方向（已執行）**：  
+全部替換為 SLF4J Logger（`LoggerFactory.getLogger(...)`）。等級劃分：正常業務流程用 `INFO`；預期內但需留意的情況（金額不符、簽章驗證失敗、找不到對應紀錄等）用 `WARN`；真正的系統例外用 `ERROR`（搭配 `log.error(msg, e)` 讓 logger 自動印出完整 stack trace，取代原本的 `e.printStackTrace()`）；含 token/claims/驗證連結等敏感資訊，或單純除錯用的訊息，一律 `DEBUG`。
 
-> **補充（1.3 修復後新增）**：`JwtAuthenticationFilter.java:58` 的 `System.out.println("取得的 token: [" + token + "]")` 直接將完整 raw JWT token 印出，比其他地方更嚴重（token 本身可用來偽造身份），Stage 2 替換 logger 時應優先處理。
+> **補充（1.3 修復後新增）**：`JwtAuthenticationFilter.java:58` 的 `System.out.println("取得的 token: [" + token + "]")` 直接將完整 raw JWT token 印出，比其他地方更嚴重（token 本身可用來偽造身份）。**已處理**：這行直接刪除,不保留（即使降為 DEBUG 也不夠安全）。
+>
+> **補充（2026-08-28）**：`AuthController.java` 原本印出 Firebase email 驗證連結（含一次性 verification code）的那行,決定直接刪除（不留 `DEBUG` log），因為連結本身就是可被使用的驗證憑證,留著沒有必要的好處。`JwtService.getUserIdFromToken()` 印出完整 JWT claims 則維持 `DEBUG` 級別。
+>
+> **補充（2026-08-28）**：`JwtService.java` 的 `getUserIdFromToken()`、`parseToken()`、`extractUserIdFromAuthHeader()` 三個方法的 `catch (Exception e)` 例外處理設計問題（型別太寬、跟 `getEmailFromToken()` 不一致）**尚未處理**，本次只換掉這三個方法裡的 println/printStackTrace，例外處理邏輯本身留到下一輪 `JwtService` 專門處理時再修（詳見 §2.x 或例外處理相關章節的既有記錄）。
 
 ---
 
@@ -695,7 +699,7 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | ✅ | 修復 `ReviewService` 日期過濾 bug | ⚡ Fix-it-faster | 低 | [§4.6](#46-reviewservice-的日期過濾-bug) |
 | ✅ | 統一 CORS 設定，移除分散的 `@CrossOrigin` | ⚡ Fix-it-faster | 低 | [§1.5](#15-cors-設定不一致websocket-完全開放) |
 | ✅ | 刪除死碼（`OrderService.java`、大量 comment blocks） | ⚡ Fix-it-faster | 低 | [§4.3](#43-大量被註解的死碼) |
-| ⬜ | 替換 `System.out.println` 為 SLF4J Logger | ⚡ Fix-it-faster | 低（但面試表現重要） | [§4.4](#44-systemoutprintln-滿佈-production-程式碼) |
+| ✅ | 替換 `System.out.println` 為 SLF4J Logger | ⚡ Fix-it-faster | 低（但面試表現重要） | [§4.4](#44-systemoutprintln-滿佈-production-程式碼) |
 | ⬜ | 整合 Arvin 系列到對應 class，刪除命名類別 | ⚡ Fix-it-faster | 低 | [§4.2](#42-隊友名字出現在類別名稱中) |
 | ⬜ | 重命名 package 為 `com.staytion.backend` | ⚡ Fix-it-faster | 低 | [§4.1](#41-package-名稱仍是-spring-initializr-預設值) |
 | ⬜ | Review/Message 使用者輸入加輸出端防護（Stored XSS） | 🎓 Learn-it-myself | 高（User Center 模組 + 安全性核心概念） | [§1.8](#18-reviewmessage-使用者輸入缺乏輸出端防護stored-xss-風險2026-08-25-新發現聊天討論-corscsrfxss-差異時) |

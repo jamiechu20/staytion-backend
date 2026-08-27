@@ -6,6 +6,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,6 +22,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     public JwtAuthenticationFilter(JwtService jwtService, UserRepository userRepository) {
         this.jwtService = jwtService;
@@ -32,7 +35,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        System.out.println("JwtFilter intercept path: " + path);  // debug log
+        log.debug("JwtFilter intercept path: {}", path);
 
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -41,10 +44,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7).trim(); // Remove "Bearer " prefix
-        System.out.println("取得的 token: [" + token + "]");
         try {
             Long userId = jwtService.getUserIdFromToken(token);
-            System.out.println("token 解出來的 userId: " + userId);
+            log.debug("userId from token: {}", userId);
             if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 User user = userRepository.findById(userId).orElse(null);
                 if (user != null) {
@@ -57,7 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            System.out.println("JWT 驗證失敗：" + e.getMessage());
+            log.debug("JWT validation failed: {}", e.getMessage());
         }
         filterChain.doFilter(request, response);
     }
