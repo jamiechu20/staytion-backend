@@ -1,0 +1,89 @@
+package com.staytion.backend.service;
+
+import com.staytion.backend.entity.Order;
+import com.staytion.backend.entity.Payment;
+import com.staytion.backend.entity.Payment.PaymentMethod;
+import com.staytion.backend.entity.Payment.PaymentStatus;
+import com.staytion.backend.repository.PaymentRepository;
+
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class PaymentService {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+
+    private final PaymentRepository paymentRepository;
+    
+
+    /**
+     * 根據訂單和支付方式創建新的支付記錄。
+     *
+     * @param order           關聯的訂單實體。
+     * @param paymentMethod   支付方式 (例如 ECPAY)。
+     * @return 新創建的 Payment 實體。
+     */
+    @Transactional
+    public Payment createPayment(Order order, PaymentMethod paymentMethod) {
+        Payment payment = new Payment();
+        payment.setOrder(order);
+        payment.setMethod(paymentMethod);
+        payment.setStatus(PaymentStatus.UNPAID);
+        payment.setCreatedAt(null); // 初始為空，待支付成功後更新
+
+        return paymentRepository.save(payment);
+    }
+
+    /**
+     * 根據支付記錄 ID 查找支付記錄。
+     *
+     * @param paymentId 支付記錄的唯一 ID。
+     * @return 包含 Payment 實體的 Optional，如果找不到則為 Optional.empty()。
+     */
+    public Optional<Payment> findPaymentById(Long paymentId) {
+        return paymentRepository.findById(paymentId);
+    }
+
+    /**
+     * 更新支付記錄的狀態。
+     *
+     * @param paymentId 支付記錄的唯一 ID。
+     * @param status    要更新為的支付狀態 (例如 PAID, CANCELED)。
+     * @return 更新後的 Payment 實體，如果找不到則為 null。
+     */
+    @Transactional
+    public Payment updatePaymentStatus(Long paymentId, PaymentStatus status) {
+        Optional<Payment> optionalPayment = paymentRepository.findById(paymentId);
+        if (optionalPayment.isPresent()) {
+            Payment payment = optionalPayment.get();
+            payment.setStatus(status);
+            if (status == PaymentStatus.PAID) {
+                payment.setCreatedAt(LocalDateTime.now());
+            }
+            return paymentRepository.save(payment);
+        }
+        log.warn("無法更新 Payment 狀態：找不到 ID 為 {} 的支付記錄。", paymentId);
+        return null;
+    }
+    
+    @Transactional
+    public Payment updatePaymentMethod(Long paymentId, PaymentMethod method) {
+    	Optional<Payment> optionalPayment = paymentRepository.findById(paymentId);
+    	if (optionalPayment.isPresent()) {
+    		Payment payment = optionalPayment.get();
+    		payment.setMethod(method);
+    		
+    		return paymentRepository.save(payment);
+    	}
+    	log.warn("無法更新 Payment 記錄：找不到 ID 為 {} 的付款方式。", paymentId);
+    	return null;
+    }
+}

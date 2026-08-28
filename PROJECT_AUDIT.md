@@ -370,8 +370,8 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ⬜ 未開始 |
-| **位置** | `com.example.demo`（全部原始碼） |
+| **狀態** | ✅ 已完成（2026-08-28） — 全部 162 個原始碼檔案（`src/main/java`、`src/test/java`）已從 `com.example.demo` 搬移到 `com.staytion.backend`，package 宣告與 import 一併更新；`pom.xml` 的 `groupId` 同步改為 `com.staytion`（`artifactId` 維持 `staytion` 不變）。`./mvnw compile` 確認編譯通過，全專案搜尋確認無殘留的 `com.example.demo` 參照。 |
+| **位置** | ~~`com.example.demo`~~ → `com.staytion.backend`（全部原始碼） |
 | **嚴重度** | 🟢 Low（但面試時會被問到） |
 
 **問題說明**：  
