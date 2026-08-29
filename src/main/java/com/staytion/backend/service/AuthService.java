@@ -1,6 +1,7 @@
 package com.staytion.backend.service;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
 
 import com.staytion.backend.dto.GoogleUserInfo;
@@ -76,9 +77,12 @@ public class AuthService {
 
         String token = jwtService.createEmailVerificationToken(user);
         String verifyLink = verifyEmailUrl + "?token=" + token;
-        String html = "<p>請點擊以下連結驗證信箱：</p><a href=\"" + verifyLink + "\">驗證信箱</a>";
         String email = user.getEmail();
-        mailService.sendHtmlMail(email, "驗證信箱", html);
+        mailService.sendTemplatedMail(email, "驗證信箱", "verify-email", Map.of(
+                "message", "請點擊以下連結驗證信箱：",
+                "linkText", "驗證信箱",
+                "link", verifyLink
+        ));
 
     }
 
@@ -113,8 +117,7 @@ public class AuthService {
         userOpt.ifPresent(user -> {
             String token = jwtService.createToken(user); // JWT: 含 email、15 分鐘有效
             String resetLink = resetPasswordUrl + "?token=" + token;
-            String html = "<p>請點擊以下連結重設密碼：</p><a href=\"" + resetLink + "\">重設密碼</a>";
-            mailService.sendHtmlMail(email, "重設密碼", html);
+            mailService.sendTemplatedMail(email, "重設密碼", "reset-password", Map.of("link", resetLink));
         });
     }
 

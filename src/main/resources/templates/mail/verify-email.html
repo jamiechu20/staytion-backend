@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+</head>
+<body>
+    <p th:text="${message}">請點擊以下連結驗證信箱：</p>
+    <a th:href="${link}" th:text="${linkText}">驗證信箱</a>
+</body>
+</html>

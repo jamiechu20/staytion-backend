@@ -153,7 +153,7 @@
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ⬜ 未開始 |
+| **狀態** | ✅ 已完成（2026-08-29，評估後決定不修改後端程式碼） — 討論後確認：真正的防線在前端渲染方式（`textContent`/框架預設 escape，不用 `innerHTML`），這部分不在本 repo 範圍。後端已經做對的事是 API 一律回傳 `application/json`（不是 `text/html`），瀏覽器不會把回應內容當 HTML 執行，這件事現況已成立、不需額外處理。曾嘗試在 `ReviewService`/`MessageService` 存入 DB 前用 `HtmlUtils.htmlEscape()` 做額外的 defense-in-depth，但評估後認為非必要且有副作用（前端若也做 escape 會雙重轉義；資料庫存的內容會偏離使用者原始輸入，不利未來資料匯出/其他系統消費），故該改動已還原，維持現狀不動。 |
 | **位置** | `Review.comment`、`Message.content`（entity 欄位）；`ReviewController`、`MessageController`/`ChatController`（原封不動存入 DB、原封不動以 JSON 回傳） |
 | **嚴重度** | 🟡 Med（後端本身不會執行任何程式碼，實際能否被觸發取決於前端渲染方式，前端不在本 repo 範圍內；但一旦前端用 `innerHTML` 等不安全方式渲染，就會變成能竊取其他使用者 JWT token 的 Stored XSS，故不能算低風險） |
 
@@ -171,8 +171,8 @@
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ⬜ 未開始 |
-| **位置** | `MailService.sendHtmlMail()`；呼叫端 `AuthService.java`（`register()`、`sendResetPasswordEmail()`）、`AuthController.java`（`/api/auth/resend-verification`） |
+| **狀態** | ✅ 已完成（2026-08-30） — 改用 Thymeleaf 模板引擎，從根本消除字串拼接風險。新增 `MailService.sendTemplatedMail()`（注入既有依賴 `TemplateEngine`，內部仍呼叫 `sendHtmlMail()`），新增 `templates/mail/verify-email.html`（`AuthService.register()`、`AuthController.resendVerification()` 共用，用 `linkText` 變數區分文字）、`templates/mail/reset-password.html`（僅一個呼叫端，文字寫死不加不必要的變數）。三個呼叫端皆已改為呼叫 `sendTemplatedMail()`，行為與改動前一致。`th:text`/`th:href` 預設自動 HTML escape，即使日後有人把使用者輸入加進郵件範本也不會被當成可執行 HTML，地雷已排除。 |
+| **位置** | ~~`MailService.sendHtmlMail()`~~ → 新增 `MailService.sendTemplatedMail()`；呼叫端 `AuthService.java`（`register()`、`sendResetPasswordEmail()`）、`AuthController.java`（`/api/auth/resend-verification`）皆已改用模板 |
 | **嚴重度** | 🟢 Low（現況安全，是預防性問題——拼進 HTML 字串的目前只有後端自產的 JWT token 與設定檔網址，不是使用者可控的自由文字） |
 
 **問題說明**：  
@@ -701,9 +701,9 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | ✅ | 刪除死碼（`OrderService.java`、大量 comment blocks） | ⚡ Fix-it-faster | 低 | [§4.3](#43-大量被註解的死碼) |
 | ✅ | 替換 `System.out.println` 為 SLF4J Logger | ⚡ Fix-it-faster | 低（但面試表現重要） | [§4.4](#44-systemoutprintln-滿佈-production-程式碼) |
 | ✅ | 整合 Arvin 系列到對應 class，刪除命名類別 | ⚡ Fix-it-faster | 低 | [§4.2](#42-隊友名字出現在類別名稱中) |
-| ⬜ | 重命名 package 為 `com.staytion.backend` | ⚡ Fix-it-faster | 低 | [§4.1](#41-package-名稱仍是-spring-initializr-預設值) |
-| ⬜ | Review/Message 使用者輸入加輸出端防護（Stored XSS） | 🎓 Learn-it-myself | 高（User Center 模組 + 安全性核心概念） | [§1.8](#18-reviewmessage-使用者輸入缺乏輸出端防護stored-xss-風險2026-08-25-新發現聊天討論-corscsrfxss-差異時) |
-| ⬜ | `MailService` 改用範本引擎，移除字串拼接組 HTML 的地雷寫法 | ⚡ Fix-it-faster | 低（現況安全，屬預防性技術債） | [§1.9](#19-mailservice-用字串拼接組-html-信件潛在地雷寫法2026-08-25-新發現同上) |
+| ✅ | 重命名 package 為 `com.staytion.backend` | ⚡ Fix-it-faster | 低 | [§4.1](#41-package-名稱仍是-spring-initializr-預設值) |
+| ✅ | Review/Message 使用者輸入加輸出端防護（Stored XSS） | 🎓 Learn-it-myself | 高（User Center 模組 + 安全性核心概念） | [§1.8](#18-reviewmessage-使用者輸入缺乏輸出端防護stored-xss-風險2026-08-25-新發現聊天討論-corscsrfxss-差異時) |
+| ✅ | `MailService` 改用範本引擎，移除字串拼接組 HTML 的地雷寫法 | ⚡ Fix-it-faster | 低（現況安全，屬預防性技術債） | [§1.9](#19-mailservice-用字串拼接組-html-信件潛在地雷寫法2026-08-25-新發現同上) |
 
 ---
 
