@@ -579,7 +579,23 @@ MySQL 中 boolean 值用 `0/1` 表示，PostgreSQL 要求 `= true`（或 `IS TRU
 
 ### 5.4 MySQL → PostgreSQL 遷移全面評估
 
-**狀態**：⬜ 未開始（整個 Stage 3 尚未啟動）
+**狀態**：🚧 進行中（2026-09-01 更新）— 步驟 1-5 已完成，應用程式已能成功啟動（Flyway migration + Hibernate `ddl-auto=validate` 皆通過）。步驟 6（資料遷移）尚未進行。
+
+**已完成的部分**：
+- `Order.java`、`Payment.java` 的 MySQL `ENUM` `columnDefinition` 已移除，改用 `@Enumerated(EnumType.STRING)` 讓 Hibernate 自動推導型別
+- `HotelRepository.java` native query 的 `i.is_cover = 1` 已改為 `i.is_cover = true`
+- `pom.xml`：`mysql-connector-j` 已換成 `org.postgresql:postgresql`（`runtime` scope，版本交由 Spring Boot BOM 管理）
+- `application.properties`：driver-class-name、datasource URL、`spring.jpa.database-platform=PostgreSQLDialect` 皆已更新為 Postgres
+- 新增 `docker-compose.yml`，本機可用 `docker compose up -d` 起一個 Postgres 16 容器（帳密透過 `.env` 的 `DB_PASSWORD` 注入）
+- **步驟 5 完成**：實際啟動應用程式，過程中額外抓到並修正了兩個從 MySQL 時代就存在、但因為 `ddl-auto` 從未設定過而一直沒被發現的落差：
+  - 所有主鍵/外鍵欄位型別從 `SERIAL`/`integer` 改為 `BIGSERIAL`/`bigint`，對齊 Entity 的 `Long` 型別（原本 MySQL 是 `int(10) unsigned`，跟 `Long` 本來就對不齊，只是 MySQL 沒報錯）
+  - `users` 表補上遺漏的 `email_verified boolean NOT NULL DEFAULT false` 欄位（Entity 早就有這個欄位，但從未真正同步進資料庫過）
+  - 應用程式現可成功啟動，唯一剩餘的啟動錯誤與本次遷移無關，是[第 6 節](#6-未完成的第三方整合firebase--google-maps) Firebase 移除的既有議題
+
+**狀態（決定）**：步驟 6（資料遷移）**暫緩，不搬舊 MySQL 資料**——舊資料本身有髒資料問題，且目前目標是驗證新環境可運作，不是正式上線，改用假資料測試即可。之後若需要當初累積的 `hotels` 資料（例如要展示或正式上線），可以只針對這張表單獨匯出匯入，不用連著其他表一起搬。
+
+**尚未驗證/處理**：
+- `findByHnameContainingIgnoreCase`（字串大小寫比較）在 Postgres 下的行為尚未實測，理論上應該正常（`IgnoreCase` 關鍵字在 MySQL 下本來就是多餘但無害，換到 Postgres 後才會真正發揮作用），但還沒實際測過
 
 這是一個有明確學習目標的重構項目，以下是遷移時需要處理的所有差異：
 
@@ -618,6 +634,26 @@ MySQL 中 boolean 值用 `0/1` 表示，PostgreSQL 要求 `= true`（或 `IS TRU
 
 **建議方向**：  
 在 `@Table` 的 `indexes` 屬性中為常用的外鍵欄位加入索引，或在 Flyway migration 腳本中加入 `CREATE INDEX`。
+
+---
+
+### 5.6 Hibernate Naming Strategy：`PhysicalNamingStrategyStandardImpl`（不自動轉換 camelCase → snake_case）
+
+| 項目 | 內容 |
+|------|------|
+| **狀態** | ⬜ 未開始（僅記錄，暫不處理） |
+| **位置** | `application.properties`：`spring.jpa.hibernate.naming.physical-strategy` |
+| **嚴重度** | 🟢 Low |
+
+**問題說明**：  
+目前設定為 `PhysicalNamingStrategyStandardImpl`，代表沒有 `@Column`/`@JoinColumn` 明確命名的 Entity 欄位，Hibernate 不會自動把 camelCase 轉成 snake_case，會直接照 Java 欄位名稱去比對資料庫欄位。目前專案能正常運作，是因為幾乎每個欄位都手動加了 `@Column(name = "...")` 明確指定，並非這個策略本身有防呆機制——之後若有人新增欄位忘記加 `@Column`，在 Postgres 下容易因為識別符大小寫/底線問題導致 `Schema-validation` 失敗（Postgres 對未加引號的識別符預設全部轉小寫，`hotelName` 會變成 `hotelname`，跟 `hotel_name` 對不上）。
+
+改用 Spring Boot 預設的 `SpringPhysicalNamingStrategy`（或明確設定 `CamelCaseToUnderscoresNamingStrategy`）可以讓這類欄位自動轉換，減少人為疏漏。由於目前所有欄位都已明確命名，`@Column` 的設定永遠優先於策略，理論上切換不會影響現有 schema 或查詢。
+
+**待確認**：使用者記得當初改成 `PhysicalNamingStrategyStandardImpl` 是因為曾經發生過命名轉換的問題，但目前不記得具體細節（哪個欄位、什麼錯誤）。**在真的切換這個設定之前，必須先查清楚當初改動的原因**，避免重蹈覆轍。
+
+**建議方向**：  
+暫不處理。之後有空時，先追查 git 歷史或詢問原因，確認當初改動的動機後，再評估是否切換回 Spring Boot 預設策略。
 
 ---
 
@@ -716,14 +752,17 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 
 | 狀態 | 任務 | 模式 | 學習價值 | 稽核編號 |
 |------|------|------|---------|---------|
-| ⬜ | 引入 Flyway，建立 baseline schema migration | 🎓 Learn-it-myself | **高**（重要業界工具） | [§5.3](#53-缺少-schema-migration-工具flyway--liquibase) |
-| ⬜ | 修復 `Order.status` 的 MySQL ENUM `columnDefinition` | 🎓 Learn-it-myself | 高（JPA 映射原理） | [§5.2](#52-mysql-專屬語法在-entity-中硬編碼) |
-| ⬜ | 修復 native query 中的 Boolean 語法 | ⚡ Fix-it-faster | 低 | [§5.2](#52-mysql-專屬語法在-entity-中硬編碼) |
-| ⬜ | 替換 JDBC driver 和 datasource URL | ⚡ Fix-it-faster | 低 | [§5.4](#54-mysql--postgresql-遷移全面評估) |
+| ✅ | 引入 Flyway，建立 baseline schema migration | 🎓 Learn-it-myself | **高**（重要業界工具） | [§5.3](#53-缺少-schema-migration-工具flyway--liquibase) |
+| ✅ | 修復 `Order.status`/`Payment.method`/`Payment.status` 的 MySQL ENUM `columnDefinition` | 🎓 Learn-it-myself | 高（JPA 映射原理） | [§5.2](#52-mysql-專屬語法在-entity-中硬編碼) |
+| ✅ | 修復 native query 中的 Boolean 語法 | ⚡ Fix-it-faster | 低 | [§5.2](#52-mysql-專屬語法在-entity-中硬編碼) |
+| ✅ | 替換 JDBC driver 和 datasource URL | ⚡ Fix-it-faster | 低 | [§5.4](#54-mysql--postgresql-遷移全面評估) |
 | ⬜ | 修復 `HotelServiceImpl.searchHotels()` N+1 問題 | 🎓 Learn-it-myself | **高**（N+1 是面試熱點） | [§2.2](#22-搜尋邏輯載入全部資料到記憶體致命效能問題) / [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
 | ⬜ | 修復 `FavoriteServiceImpl.getFavoriteHotels()` N+1 | 🎓 Learn-it-myself | 高 | [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
-| ⬜ | 為常用查詢欄位加索引（Flyway migration） | 🎓 Learn-it-myself | 中（DB 設計概念） | [§5.5](#55-缺少索引可擴展性問題) |
-| ⬜ | 本地 Docker PostgreSQL 驗證遷移正確性 | 🎓 Learn-it-myself | **高**（實際動手體驗） | [§5.4](#54-mysql--postgresql-遷移全面評估) |
+| ✅ | 為常用查詢欄位加索引（Flyway migration） | 🎓 Learn-it-myself | 中（DB 設計概念） | [§5.5](#55-缺少索引可擴展性問題) |
+| ✅ | 本地 Docker PostgreSQL 驗證遷移正確性 | 🎓 Learn-it-myself | **高**（實際動手體驗） | [§5.4](#54-mysql--postgresql-遷移全面評估) |
+| ⬜ | 資料遷移（暫緩，改用假資料測試；之後如需要可單獨匯出 `hotels`） | ⚡ Fix-it-faster | 低 | [§5.4](#54-mysql--postgresql-遷移全面評估) |
+| ⬜ | 驗證 `findByHnameContainingIgnoreCase` 在 Postgres 下的大小寫比較行為 | ⚡ Fix-it-faster | 低 | [§5.4](#54-mysql--postgresql-遷移全面評估) |
+| ⬜ | 評估切換 Hibernate Naming Strategy（`PhysicalNamingStrategyStandardImpl` → 自動 camelCase 轉換） | ⚡ Fix-it-faster | 低 | [§5.6](#56-hibernate-naming-strategyphysicalnamingstrategystandardimpl不自動轉換-camelcase--snake_case) |
 
 ---
 
