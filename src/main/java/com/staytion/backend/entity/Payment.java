@@ -12,11 +12,11 @@ public class Payment {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "method", columnDefinition = "ENUM('CREDIT_CARD','CASH','ECPAY') DEFAULT 'CASH'")
+    @Column(name = "method")
     private PaymentMethod method = PaymentMethod.CASH;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", columnDefinition = "ENUM('PAID','UNPAID','CANCELED') DEFAULT 'UNPAID'")
+    @Column(name = "status")
     private PaymentStatus status = PaymentStatus.UNPAID;
 
     @Column(name = "created_at")

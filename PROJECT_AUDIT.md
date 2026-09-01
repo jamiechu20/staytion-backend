@@ -560,14 +560,19 @@ MySQL 中 boolean 值用 `0/1` 表示，PostgreSQL 要求 `= true`（或 `IS TRU
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ⬜ 未開始 — `pom.xml` 尚未加入 Flyway 依賴。 |
-| **位置** | `pom.xml`（未引入任何 migration 依賴） |
+| **狀態** | ✅ 已完成（2026-09-01）— `pom.xml` 已加入 `flyway-core` + `flyway-database-postgresql`，baseline migration 已建立，`ddl-auto` 已設為 `validate`。 |
+| **位置** | `pom.xml`、`src/main/resources/db/migration/V1__init_schema.sql`、`application.properties` |
 | **嚴重度** | 🟡 Med |
 
 **問題說明**：  
 目前沒有任何 schema migration 工具。資料庫結構的變更完全靠手動執行 SQL 或依賴 `spring.jpa.hibernate.ddl-auto`（目前未明確設定，預設是 `create-drop` 或 `none`）。遷移到 PostgreSQL 時，需要重建所有 table，沒有工具記錄版本，兩人以上協作時極易造成環境不同步。
 
-**建議方向**：  
+**已完成的部分**：
+- `pom.xml` 加入 `flyway-core` + `flyway-database-postgresql`（Spring Boot 3.5.0 對應 Flyway 10.x，PostgreSQL 支援拆成獨立模組）
+- 用 `mysqldump --no-data` 匯出現有 MySQL schema 當參考，手動改寫成 `V1__init_schema.sql`（Postgres 語法），直接跳過「先在 MySQL 上跑 Flyway」的過渡階段，只在新的 Postgres 環境建 baseline
+- `spring.jpa.hibernate.ddl-auto=validate`：Flyway 負責建表/改表，Hibernate 只驗證 Entity 與實際 schema 是否一致，啟動時若對不上會直接失敗，不會誤改 schema
+
+**建議方向（原始）**：  
 引入 **Flyway**（較簡單，適合此規模的專案）：`pom.xml` 加入依賴，在 `src/main/resources/db/migration/` 建立 `V1__init_schema.sql`，把目前的建表 SQL 寫進去作為基線版本。
 
 ---

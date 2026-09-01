@@ -28,7 +28,7 @@ public class Order {
 
     // 枚舉類型映射
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", columnDefinition = "ENUM('CONFIRMED','CANCELED','PENDING') DEFAULT 'PENDING'")
+    @Column(name = "status")
     private OrderStatus status = OrderStatus.PENDING;
 
     // Constructor
