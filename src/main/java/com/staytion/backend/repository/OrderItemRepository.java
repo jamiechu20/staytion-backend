@@ -1,6 +1,7 @@
 package com.staytion.backend.repository;
 
 import com.staytion.backend.entity.OrderItem;
+import com.staytion.backend.projection.RoomTypeBookedCountProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -33,19 +34,19 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
             @Param("excludeOrderId") Long excludeOrderId
     );
 
-    //    計算在指定飯店與房型中，所有與查詢日期區間重疊的訂單所訂房間總數。
+    //    計算指定飯店中，各房型在查詢日期區間內（與訂單日期重疊）已被訂走的房間總數。
+    //    以 GROUP BY 一次算出所有房型，沒有任何訂單的房型不會出現在結果中。
     @Query("""
-                SELECT COALESCE(SUM(oi.quantity), 0)
+                SELECT oi.roomType.id AS roomTypeId, SUM(oi.quantity) AS bookedCount
                 FROM OrderItem oi
                 JOIN oi.order o
                 WHERE oi.roomType.hotel.id = :hotelId
-                  AND oi.roomType.id = :roomTypeId
                   AND o.checkInDate < :checkOutDate
                   AND o.checkOutDate > :checkInDate
+                GROUP BY oi.roomType.id
             """)
-    Integer countBookedRooms(
+    List<RoomTypeBookedCountProjection> countBookedRoomsByHotel(
             @Param("hotelId") Long hotelId,
-            @Param("roomTypeId") Long roomTypeId,
             @Param("checkInDate") LocalDate checkInDate,
             @Param("checkOutDate") LocalDate checkOutDate
     );

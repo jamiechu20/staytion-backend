@@ -6,6 +6,7 @@ import com.staytion.backend.dto.response.AvailableRoomResponseDto;
 import com.staytion.backend.entity.OrderItem;
 import com.staytion.backend.entity.RoomAvailability;
 import com.staytion.backend.entity.RoomType;
+import com.staytion.backend.projection.RoomTypeBookedCountProjection;
 import com.staytion.backend.repository.OrderItemRepository;
 import com.staytion.backend.repository.RoomAvailabilityRepository;
 import com.staytion.backend.repository.RoomTypeRepository;
@@ -15,7 +16,9 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -86,23 +89,23 @@ public class RoomAvailabilityService {
 
         // 查出該飯店所有房型
         List<RoomType> roomTypes = roomTypeRepository.findByHotelId(hotelId);
+        // 一次查出所有房型在該日期區間內已被預訂幾間房（沒出現在結果中的房型代表 0 間）
+        Map<Long, Long> bookedCounts = orderItemRepository
+                .countBookedRoomsByHotel(hotelId, checkInDate, checkOutDate)
+                .stream()
+                .collect(Collectors.toMap(
+                        RoomTypeBookedCountProjection::getRoomTypeId,
+                        RoomTypeBookedCountProjection::getBookedCount));
+
         List<AvailableRoomResponseDto> result = new ArrayList<>();
 
         for (RoomType roomType : roomTypes) {
-            Long roomTypeId = roomType.getId();
-
-            // 查該房型，該日期區間內已被預訂幾間房
-            Integer bookedCount = orderItemRepository.countBookedRooms(
-                    hotelId,
-                    roomTypeId,
-                    checkInDate,
-                    checkOutDate
-            );
+            long bookedCount = bookedCounts.getOrDefault(roomType.getId(), 0L);
 
             // 該房型總房間數
-            Integer totalRooms = roomTypeRepository.countByRoomTypeId(roomTypeId);
+            int totalRooms = roomType.getQuantity() != null ? roomType.getQuantity() : 0;
 
-            int availableCount = totalRooms - bookedCount;
+            int availableCount = (int) (totalRooms - bookedCount);
 
             if (availableCount > 0) {
                 result.add(new AvailableRoomResponseDto(

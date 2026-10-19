@@ -2,6 +2,7 @@ package com.staytion.backend.service;
 
 import com.staytion.backend.dto.ChatRoomDto;
 import com.staytion.backend.entity.ChatRoom;
+import com.staytion.backend.entity.User;
 import com.staytion.backend.repository.ChatRoomRepository;
 import com.staytion.backend.repository.HotelRepository;
 import com.staytion.backend.repository.MessageRepository;
@@ -72,10 +73,9 @@ public class ChatRoomService {
             Long ownerId = room.getHotel().getOwner().getId();
             if (userId.equals(ownerId)) {
                 //房東身份，顯示房客名字＋飯店名
-                Long guestId = room.getUser1().getId().equals(ownerId)
-                        ? room.getUser2().getId() : room.getUser1().getId();
-                dto.setReceiverId(guestId);
-                String guestName = userRepository.findById(guestId).map(u -> u.getFirstName()).orElse("未知房客");
+                User guest = room.getUser1().getId().equals(ownerId) ? room.getUser2() : room.getUser1();
+                dto.setReceiverId(guest.getId());
+                String guestName = guest.getFirstName() != null ? guest.getFirstName() : "未知房客";
                 dto.setDisplayName(guestName + "｜" + room.getHotel().getHname());
 
             } else {
@@ -98,10 +98,9 @@ public class ChatRoomService {
             dto.setHotelId(room.getHotel().getId());
             dto.setHotelName(room.getHotel().getHname());
             Long ownerId = room.getHotel().getOwner().getId();
-            Long guestId = room.getUser1().getId().equals(ownerId)
-                    ? room.getUser2().getId() : room.getUser1().getId();
-            dto.setReceiverId(guestId);
-            String guestName = userRepository.findById(guestId).map(u -> u.getFirstName()).orElse("未知房客");
+            User guest = room.getUser1().getId().equals(ownerId) ? room.getUser2() : room.getUser1();
+            dto.setReceiverId(guest.getId());
+            String guestName = guest.getFirstName() != null ? guest.getFirstName() : "未知房客";
             dto.setDisplayName(guestName);
             return dto;
         }).toList();

@@ -74,7 +74,7 @@ public class HotelController {
     )
     @GetMapping("/count")
     public Map<String, Long> getHotelCount(HotelSearchResult resultDTO) {
-        Long count = hotelService.searchHotels(resultDTO, 1, Integer.MAX_VALUE).getTotalElements();
+        Long count = hotelService.countHotels(resultDTO);
         Map<String, Long> result = new HashMap<>();
         result.put("count", count);
         return result;

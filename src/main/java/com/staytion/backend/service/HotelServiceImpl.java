@@ -10,10 +10,11 @@ import java.util.stream.Collectors;
 import com.staytion.backend.projection.HotelProjection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.staytion.backend.dto.AmenityDTO;
 import com.staytion.backend.dto.HotelDetailDTO;
@@ -22,165 +23,104 @@ import com.staytion.backend.dto.HotelSearchResult;
 import com.staytion.backend.dto.ImageDTO;
 import com.staytion.backend.dto.RoomTypeDTO;
 import com.staytion.backend.entity.Hotel;
-import com.staytion.backend.repository.AmenityRepository;
 import com.staytion.backend.repository.HotelRepository;
 import com.staytion.backend.repository.ImageRepository;
 import com.staytion.backend.repository.RoomTypeRepository;
+import com.staytion.backend.specification.HotelSpecifications;
 
 @Service
 @RequiredArgsConstructor
 public class HotelServiceImpl implements HotelService {
 
-    private final AmenityRepository amenityRepository;
     private final HotelRepository hotelRepository;
     private final RoomTypeRepository roomTypeRepository;
     private final ImageRepository imageRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public Page<HotelSearchRequest> searchHotels(HotelSearchResult dto, int page, int size) {
-        List<Hotel> hotels = hotelRepository.findAll();
+        // 篩選、排序、分頁全部在資料庫完成，只載入當頁的飯店
+        Specification<Hotel> spec = buildSearchSpec(dto);
+        Pageable pageable = PageRequest.of(Math.max(page - 1, 0), size);
+        Page<Hotel> hotels = hotelRepository.findAll(spec, pageable);
 
-        List<HotelSearchRequest> filtered = hotels.stream()
-                .filter(hotel -> {
-                    if (dto.getAdult() != null || dto.getChild() != null) {
-                        int totalPeople = (dto.getAdult() != null ? dto.getAdult() : 0)
-                                + (dto.getChild() != null ? dto.getChild() : 0);
-                        boolean hasRoom = hotel.getRoomTypes().stream()
-                                .anyMatch(rt -> rt.getCapacity() >= totalPeople);
-                        if (!hasRoom) return false;
-                    }
-                    // 城市
-                    if (dto.getCity() != null && !dto.getCity().isEmpty()) {
-                        String cityValue = hotel.getDistrict().getCity().getCname();
-                        if (!cityValue.equalsIgnoreCase(dto.getCity())) {
-                            return false;
-                        }
-                    }
-                    // 區域
-                    if (dto.getArea() != null && !dto.getArea().isEmpty()) {
-                        String areaValue = hotel.getDistrict().getDname();
-                        if (!areaValue.equalsIgnoreCase(dto.getArea())) {
-                            return false;
-                        }
-                    }
-                    // 價格
-                    if (dto.getPrice() != null && !dto.getPrice().isEmpty()) {
-                        String priceStr = dto.getPrice();
-                        int min = 0, max = Integer.MAX_VALUE;
-                        if (priceStr.contains("-")) {
-                            String[] range = priceStr.split("-");
-                            min = Integer.parseInt(range[0]);
-                            max = Integer.parseInt(range[1]);
-                        } else if (priceStr.endsWith("up")) {
-                            min = Integer.parseInt(priceStr.replace("+", "").replace("up", ""));
-                        }
-                        Integer minRoomPrice = hotel.getRoomTypes().stream()
-                                .map(rt -> rt.getPrice().intValue())
-                                .min(Integer::compareTo)
-                                .orElse(0);
-                        if (minRoomPrice < min || minRoomPrice > max) {
-                            return false;
-                        }
-                    }
-                    // 設施
-                    if (dto.getAmenity() != null && !dto.getAmenity().isEmpty()) {
-                        List<Long> userAmenityIds = dto.getAmenity();
-                        boolean hasAll = userAmenityIds.stream().allMatch(fac -> hotel.getRoomTypes().stream()
-                                .flatMap(rt -> rt.getAmenities().stream())
-                                .anyMatch(a -> fac.equals(a.getId())));
-                        if (!hasAll) {
-                            return false;
-                        }
-                    }
-                    // 評分
-                    if (dto.getScore() != null) {
-                        double avg = hotel.getReviews().stream().mapToDouble(r -> r.getScore()).average().orElse(0.0);
-                        if (avg < dto.getScore()) {
-                            return false;
-                        }
-                    }
-                    return true;
-                })
-                .sorted((h1, h2) -> {
-                    String sort = dto.getSort();
-                    if ("price_highest".equals(sort)) {
-                        int p1 = h1.getRoomTypes().stream().map(rt -> rt.getPrice().intValue()).min(Integer::compareTo)
-                                .orElse(0);
-                        int p2 = h2.getRoomTypes().stream().map(rt -> rt.getPrice().intValue()).min(Integer::compareTo)
-                                .orElse(0);
-                        return Integer.compare(p2, p1);
-                    } else if ("rating_highest".equals(sort)) {
-                        double r1 = h1.getReviews().stream().mapToDouble(r -> r.getScore()).average().orElse(0.0);
-                        double r2 = h2.getReviews().stream().mapToDouble(r -> r.getScore()).average().orElse(0.0);
-                        return Double.compare(r2, r1);
-                    }
-                    return 0;
-                })
-                .map(hotel -> {
-                    HotelSearchRequest out = new HotelSearchRequest();
-                    out.setId(hotel.getId());
-                    out.setName(hotel.getHname());
-                    out.setCity(hotel.getDistrict().getCity().getCname());
-                    out.setDistrict(hotel.getDistrict().getDname());
-                    out.setLat(hotel.getLatitude());
-                    out.setLng(hotel.getLongitude());
-                    out.setImgUrl(
-                            hotel.getImages().stream()
-                                    .filter(img -> Boolean.TRUE.equals(img.getIsCover()))
-                                    .map(img -> img.getImgUrl())
-                                    .findFirst()
-                                    .orElse("https://fakeimg.pl/200x200/?text=No+Image"));
-                            // 建議編碼，避免有空格等字元
-                    String mapQuery = hotel.getHname() + " " + hotel.getDistrict().getCity().getCname();
-                    String mapUrl = "https://www.google.com/maps/search/?api=1&query=" +
-                            URLEncoder.encode(mapQuery, StandardCharsets.UTF_8);
-                    out.setMapUrl(mapUrl);
-                    out.setRoomType(
-                            hotel.getRoomTypes().stream()
-                                    .map(rt -> rt.getRname())
-                                    .findFirst()
-                                    .orElse(""));
-                    out.setPrice(
-                            hotel.getRoomTypes().stream()
-                                    .map(rt -> rt.getPrice().intValue())
-                                    .min(Integer::compareTo)
-                                    .orElse(0));
-                    out.setRating(
-                            hotel.getReviews().stream()
-                                    .mapToDouble(r -> r.getScore())
-                                    .average().orElse(0.0));
-                    out.setNight(getNight(dto.getCheckin(), dto.getCheckout()));
-                    out.setAdults(dto.getAdult() != null ? dto.getAdult() : 2);
+        return hotels.map(hotel -> {
+            HotelSearchRequest out = new HotelSearchRequest();
+            out.setId(hotel.getId());
+            out.setName(hotel.getHname());
+            out.setCity(hotel.getDistrict().getCity().getCname());
+            out.setDistrict(hotel.getDistrict().getDname());
+            out.setLat(hotel.getLatitude());
+            out.setLng(hotel.getLongitude());
+            out.setImgUrl(
+                    hotel.getImages().stream()
+                            .filter(img -> Boolean.TRUE.equals(img.getIsCover()))
+                            .map(img -> img.getImgUrl())
+                            .findFirst()
+                            .orElse("https://fakeimg.pl/200x200/?text=No+Image"));
+                    // 建議編碼，避免有空格等字元
+            String mapQuery = hotel.getHname() + " " + hotel.getDistrict().getCity().getCname();
+            String mapUrl = "https://www.google.com/maps/search/?api=1&query=" +
+                    URLEncoder.encode(mapQuery, StandardCharsets.UTF_8);
+            out.setMapUrl(mapUrl);
+            out.setRoomType(
+                    hotel.getRoomTypes().stream()
+                            .map(rt -> rt.getRname())
+                            .findFirst()
+                            .orElse(""));
+            out.setPrice(
+                    hotel.getRoomTypes().stream()
+                            .map(rt -> rt.getPrice().intValue())
+                            .min(Integer::compareTo)
+                            .orElse(0));
+            out.setRating(
+                    hotel.getReviews().stream()
+                            .mapToDouble(r -> r.getScore())
+                            .average().orElse(0.0));
+            out.setNight(getNight(dto.getCheckin(), dto.getCheckout()));
+            out.setAdults(dto.getAdult() != null ? dto.getAdult() : 2);
 
-                    // 取得市中心經緯度
-                    double[] cityCenter = CITY_CENTER_MAP.get(hotel.getDistrict().getCity().getCname());
-                    if (cityCenter != null && hotel.getLatitude() != null && hotel.getLongitude() != null) {
-                        double distance = haversine(
-                                hotel.getLatitude(), hotel.getLongitude(),
-                                cityCenter[0], cityCenter[1]
-                        );
-                        out.setDistance(Math.round(distance * 10.0) / 10.0); // 單位: 公里
-                    } else {
-                        out.setDistance(null); // 查無資料時
-                    }
+            // 取得市中心經緯度
+            double[] cityCenter = CITY_CENTER_MAP.get(hotel.getDistrict().getCity().getCname());
+            if (cityCenter != null && hotel.getLatitude() != null && hotel.getLongitude() != null) {
+                double distance = haversine(
+                        hotel.getLatitude(), hotel.getLongitude(),
+                        cityCenter[0], cityCenter[1]
+                );
+                out.setDistance(Math.round(distance * 10.0) / 10.0); // 單位: 公里
+            } else {
+                out.setDistance(null); // 查無資料時
+            }
 
-                    return out;
-                })
-                .collect(Collectors.toList());
+            return out;
+        });
+    }
 
-        // 分頁
-        int fromIndex = Math.max((page - 1) * size, 0);
-        int toIndex = Math.min(fromIndex + size, filtered.size());
-        List<HotelSearchRequest> pagedList = fromIndex >= filtered.size()
-                ? java.util.Collections.emptyList()
-                : filtered.subList(fromIndex, toIndex);
+    @Override
+    public long countHotels(HotelSearchResult dto) {
+        return hotelRepository.count(buildSearchSpec(dto));
+    }
 
-        Pageable pageable = PageRequest.of(page - 1, size);
-        return new PageImpl<>(pagedList, pageable, filtered.size());
+    private Specification<Hotel> buildSearchSpec(HotelSearchResult dto) {
+        Integer totalPeople = null;
+        if (dto.getAdult() != null || dto.getChild() != null) {
+            totalPeople = (dto.getAdult() != null ? dto.getAdult() : 0)
+                    + (dto.getChild() != null ? dto.getChild() : 0);
+        }
+        return Specification.allOf(
+                HotelSpecifications.hasCapacityFor(totalPeople),
+                HotelSpecifications.hasCity(dto.getCity()),
+                HotelSpecifications.hasArea(dto.getArea()),
+                HotelSpecifications.hasPriceInRange(dto.getPrice()),
+                HotelSpecifications.hasAmenities(dto.getAmenity()),
+                HotelSpecifications.hasMinScore(dto.getScore()),
+                HotelSpecifications.sortBy(dto.getSort())
+                );
     }
 
     // 飯店詳情
     @Override
+    @Transactional(readOnly = true)
     public HotelDetailDTO getHotelDetail(Long hotelId) {
         Hotel hotel = hotelRepository.findById(hotelId).orElseThrow();
         HotelDetailDTO dto = new HotelDetailDTO();
@@ -206,8 +146,18 @@ public class HotelServiceImpl implements HotelService {
                 }).collect(Collectors.toList());
         dto.setImages(imageDTOs);
 
-        // 查所有房型
-        List<RoomTypeDTO> roomTypeDTOs = roomTypeRepository.findByHotelId(hotelId)
+        // 房型圖片：查詢條件跟房型無關，迴圈外查一次即可（原本每個房型都重查同一批資料）
+        List<ImageDTO> roomImages = imageRepository.findByHotelIdAndIsCover(hotelId, true)
+                .stream().map(img -> {
+                    ImageDTO imgDTO = new ImageDTO();
+                    imgDTO.setId(img.getId());
+                    imgDTO.setImgUrl(img.getImgUrl());
+                    imgDTO.setIsCover(img.getIsCover());
+                    return imgDTO;
+                }).collect(Collectors.toList());
+
+        // 查所有房型（連同設施一起載入）
+        List<RoomTypeDTO> roomTypeDTOs = roomTypeRepository.findWithAmenitiesByHotelId(hotelId)
                 .stream().map(roomType -> {
                     RoomTypeDTO rtdto = new RoomTypeDTO();
                     rtdto.setId(roomType.getId());
@@ -223,19 +173,10 @@ public class HotelServiceImpl implements HotelService {
                     rtdto.setBedType(roomType.getBedType());
                     rtdto.setCapacity(roomType.getCapacity());
 
-                    // 查房型圖片
-                    List<ImageDTO> roomImages = imageRepository.findByHotelIdAndIsCover(hotelId, true)
-                            .stream().map(img -> {
-                                ImageDTO imgDTO = new ImageDTO();
-                                imgDTO.setId(img.getId());
-                                imgDTO.setImgUrl(img.getImgUrl());
-                                imgDTO.setIsCover(img.getIsCover());
-                                return imgDTO;
-                            }).collect(Collectors.toList());
                     rtdto.setImages(roomImages);
 
-                    // 查房型設施
-                    List<AmenityDTO> rtAmenities = amenityRepository.findByRoomTypeId(roomType.getId())
+                    // 房型設施
+                    List<AmenityDTO> rtAmenities = roomType.getAmenities()
                             .stream().map(a -> {
                                 AmenityDTO adto = new AmenityDTO();
                                 adto.setId(a.getId());
@@ -257,6 +198,7 @@ public class HotelServiceImpl implements HotelService {
     }
 
 	@Override
+	@Transactional(readOnly = true)
 	public List<HotelSearchRequest> searchHotelsByName(String keyword, Long highlightHotelId) {
 		List<Hotel> hotels = hotelRepository.findByHnameContainingIgnoreCase(keyword);
 

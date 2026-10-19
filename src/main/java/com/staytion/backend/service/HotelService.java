@@ -18,6 +18,8 @@ public interface HotelService {
 
     Page<HotelSearchRequest> searchHotels(HotelSearchResult dto, int page, int size);
 
+    long countHotels(HotelSearchResult dto);
+
     HotelDetailDTO getHotelDetail(Long hotelId);
     
     List<HotelSearchRequest> searchHotelsByName(String keyword, Long highlightHotelId);

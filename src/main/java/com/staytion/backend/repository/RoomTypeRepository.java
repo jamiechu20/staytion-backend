@@ -4,6 +4,7 @@ import com.staytion.backend.entity.RoomType;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -13,6 +14,10 @@ import java.util.List;
 
 public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
     List<RoomType> findByHotelId(Long hotelId);
+
+    // 飯店詳情頁：房型連同設施一次載入，避免每個房型各查一次設施
+    @EntityGraph(attributePaths = "amenities")
+    List<RoomType> findWithAmenitiesByHotelId(Long hotelId);
 
     Page<RoomType> findByRnameContaining(String keyword, Pageable pageable);
 
@@ -60,14 +65,6 @@ public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
 
     List<RoomType> findByHotelIdAndCapacityGreaterThanEqual(Long hotelId, Integer capacity);
 
-    //查詢飯店最低價
-    @Query("""
-                SELECT MIN(rt.price)
-                FROM RoomType rt
-                WHERE rt.hotel.id = :hotelId
-            """)
-    Integer findMinPriceByHotelId(@Param("hotelId") Long hotelId);
-
     // 查詢業主底下所有飯店房型的總房數
     @Query("""
                 SELECT SUM(rt.quantity)
@@ -76,9 +73,4 @@ public interface RoomTypeRepository extends JpaRepository<RoomType, Long> {
                 WHERE h.owner.id = :ownerId
             """)
     Integer sumTotalRoomsByOwner(@Param("ownerId") Long ownerId);
-
-
-    // 取得指定房型的總房間數 (quantity 欄位)。
-    @Query("SELECT r.quantity FROM RoomType r WHERE r.id = :id")
-    Integer countByRoomTypeId(@Param("id") Long id);
 }

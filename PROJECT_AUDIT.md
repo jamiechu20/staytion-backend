@@ -209,7 +209,7 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ⬜ 未開始 — `searchHotels()` 第一行仍是 `hotelRepository.findAll()`。 |
+| **狀態** | ✅ 已完成（2026-10-19）— 改用 JPA Specification + `Pageable`，篩選、排序、分頁全部在資料庫完成，詳見 [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題)。 |
 | **位置** | `HotelServiceImpl.java:43-45`（`searchHotels` 方法） |
 | **嚴重度** | 🔴 High |
 
@@ -512,8 +512,8 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 
 | 項目 | 內容 |
 |------|------|
-| **狀態** | ⬜ 未開始 |
-| **位置** | `HotelServiceImpl.java`、`FavoriteServiceImpl.java:64-97` |
+| **狀態** | ✅ 已完成（2026-10-19）— 原列的兩處，加上複查全專案時另外找到的 4 處 N+1，全部處理完畢。用拋棄式 PostgreSQL 容器灌假資料後實測，每個 API 的 SQL 數量都已固定，不再隨資料筆數增加。 |
+| **位置** | `HotelServiceImpl.java`、`FavoriteServiceImpl.java:64-97`（另見下方「已完成的部分」新增的 4 處） |
 | **嚴重度** | 🔴 High |
 
 **問題說明**：  
@@ -525,6 +525,40 @@ Service 方法改為回傳 Domain 物件或拋出自定義例外；Controller �
 **建議方向**：  
 - Hotel 搜尋：移到資料庫做篩選（JPQL + JPA Specification），使用 `JOIN FETCH` 一次取得所需關聯資料
 - Favorite 列表：改用單一 JPQL 查詢（含 JOIN），或使用 Projection 一次取得所有需要的欄位
+
+**已完成的部分**：
+
+| # | 位置 | 原本的查詢數 | 修正後 | 作法 |
+|---|------|-------------|--------|------|
+| 1 | `HotelServiceImpl.searchHotels()`（`GET /api/hotels`） | `findAll()` 載入全部飯店 + 每間飯店各自 lazy load district/city/roomTypes/reviews/images（+ roomType.amenities），約 1 + 5N 條 | 固定 5～6 條（實測） | 見下方說明 ① |
+| 2 | `HotelController.getHotelCount()`（`GET /api/hotels/count`） | 呼叫 `searchHotels(dto, 1, Integer.MAX_VALUE)`，為了一個數字把所有符合條件的飯店連同關聯全部載入並轉成 DTO | 1 條 `SELECT count(...)` | 新增 `HotelService.countHotels()`，與搜尋共用 `buildSearchSpec()`，直接 `hotelRepository.count(spec)` |
+| 3 | `HotelServiceImpl.searchHotelsByName()`（`GET /api/hotels/search`） | 1 + 每間飯店 district/city/roomTypes/reviews/images | 固定 4 條 | `findByHnameContainingIgnoreCase` 加 `@EntityGraph(district, district.city)`；集合交給 batch fetch；加 `@Transactional(readOnly = true)` 後 highlight 的 `findById` 直接命中一級快取 |
+| 4 | `HotelServiceImpl.getHotelDetail()`（`GET /api/hotels/{id}`） | 每個房型各查 2 次：`findByHotelIdAndIsCover(hotelId, true)`（**每次都查同一批資料**）+ `amenityRepository.findByRoomTypeId()`，共 3 + 2M 條 | 固定 5 條 | 房型圖片查詢移到迴圈外只查一次；新增 `RoomTypeRepository.findWithAmenitiesByHotelId()`（`@EntityGraph("amenities")`）房型與設施一次載入 |
+| 5 | `FavoriteServiceImpl.getFavoriteHotels()`（`GET /api/favorites/users`） | 1 + 每個收藏 5 條（`findById`、平均分、評論數、最低價、封面圖） | 1 條 | `FavoriteRepository.findFavoriteHotelsByUserIdAndCity()`：JPQL constructor expression（`SELECT new FavHotelDto(...)`）＋ 4 個相關子查詢，直接回傳 DTO |
+| 6 | `ChatRoomService.getChatRoomsForUser()` / `getChatRoomsForHotel()`（`GET /api/chatrooms/my`、`/hotel/{id}`） | `ChatRoom` 的 `user1`/`user2`/`hotel` 是預設 EAGER 的 `@ManyToOne`，查列表後 Hibernate 再逐筆補查；`hotel.owner` 是 LAZY 也逐筆查；迴圈內又 `userRepository.findById(guestId)` 重查一次已經載入的使用者 | 1 條（另 1 條是 JWT filter 查使用者） | `ChatRoomRepository` 兩個方法加 `@EntityGraph(user1, user2, hotel, hotel.owner)`；房客名稱直接用 `room.getUser1()/getUser2()`，移除多餘的 `findById` |
+| 7 | `RoomAvailabilityService.findAvailableRooms()`（`GET /api/rooms/order/available`） | 每個房型各查 2 條：`countBookedRooms()` + `countByRoomTypeId()`（後者查的 `quantity` 其實就在已載入的 `RoomType` 上），共 1 + 2M 條 | 固定 2 條 | `OrderItemRepository.countBookedRoomsByHotel()` 用 `GROUP BY oi.roomType.id` 一次算出全部房型的已訂數量（新增 `RoomTypeBookedCountProjection`），轉成 `Map<roomTypeId, bookedCount>`；總房數直接用 `roomType.getQuantity()` |
+
+**① `searchHotels()` 的作法**：
+- **篩選下推到資料庫**：`HotelSpecifications` 提供 `hasCapacityFor`、`hasCity`、`hasArea`、`hasPriceInRange`、`hasAmenities`、`hasMinScore`，由 `buildSearchSpec()` 以 `Specification.allOf(...)` 組合，`null` 條件自動略過。
+- **排序也下推**：`sortBy()` 用 `query.orderBy(...)` 依「最低房價子查詢」或「平均評分子查詢」排序，最後一律加 `id ASC` 當 tie-breaker，確保分頁穩定；count query（`resultType == Long`）不加排序。
+- **分頁交給資料庫**：`hotelRepository.findAll(spec, pageable)`，移除原本的 `subList` 手動分頁與 `PageImpl`。
+- **ToOne 用 fetch join、ToMany 用 batch fetch**：`HotelRepository` 覆寫 `findAll(Specification, Pageable)` 並加 `@EntityGraph(district, district.city)`。一對多的 `roomTypes`/`reviews`/`images` **不能**一起 fetch join——對集合 fetch join 再分頁，Hibernate 會把全部資料撈回記憶體才分頁（`HHH90003004` 警告），等於回到原點。因此在 `application.properties` 加 `spring.jpa.properties.hibernate.default_batch_fetch_size=100`，存取 lazy 集合時改用 `WHERE hotel_id = ANY(?)` 一次載入整頁飯店的集合。
+- 實測 SQL：`hotels JOIN districts JOIN cities ... LIMIT`、`count`、`images ... = ANY(?)`、`room_types ... = ANY(?)`、`reviews ... = ANY(?)`，跟每頁幾筆無關。
+
+**順手修正 / 行為說明**：
+- `hasCapacityFor` 原本是 `root.join("roomTypes")` + `query.distinct(true)`，改為 `EXISTS` 子查詢：一對多 join 會讓飯店重複，而 PostgreSQL 的 `SELECT DISTINCT` 不允許 `ORDER BY` 不在 select list 的運算式（排序用到子查詢時會直接報錯）。
+- **設施篩選語意修正（行為變更）**：舊版 Stream 邏輯比對的是**房型**設施（`room_amenities`），但前端篩選的是**飯店**設施，所以 `hasAmenities` 改為對 `Hotel.amenities`（`hotel_amenities` 表）做子查詢：飯店必須具備全部指定的設施（`COUNT(DISTINCT amenity.id) = 指定數量`）。這等於順手修掉舊版查錯表的 bug，篩選結果會跟修改前不同。
+- 最低房價、平均評分子查詢都加了 `COALESCE(..., 0)`，與舊版 `orElse(0)`/`orElse(0.0)` 行為一致（沒有房型/評論的飯店視為 0）。
+- **🐛 PostgreSQL 遷移殘留 bug**：收藏清單原本的 `(:city IS NULL OR c.cname LIKE concat('%', :city, '%'))`，在 `city` 為 `null`（不帶城市篩選）時，PostgreSQL JDBC 推不出參數型別、當成 `bytea`，LIKE 直接報 `operator does not exist: character varying ~~ bytea`。換句話說，**自從換到 PostgreSQL 之後「不篩城市的收藏清單」就一直是壞的**。新查詢改為 `CAST(:city AS String)` 修正。
+- 因呼叫端消失而成為死碼、一併刪除的 repository 方法：`FavoriteRepository.findHotelIdsByUserIdAndCity`、`RoomTypeRepository.findMinPriceByHotelId`/`countByRoomTypeId`、`ImageRepository.findCoverImageByHotelId`、`AmenityRepository.findByRoomTypeId`、`OrderItemRepository.countBookedRooms`（被 `countBookedRoomsByHotel` 取代）。`HotelServiceImpl` 不再需要 `AmenityRepository`；`FavoriteServiceImpl` 只剩 `FavoriteRepository` 一個依賴。
+- 讀取型方法（`searchHotels`、`searchHotelsByName`、`getHotelDetail`）加上 `@Transactional(readOnly = true)`，lazy loading 不再依賴 Open Session In View。
+
+**⬜ 這次發現但不在範圍內、留待之後處理**：
+- `Review.user`/`Review.hotel`、`ChatRoom.user1`/`user2`/`hotel` 都是 `@ManyToOne` 預設的 EAGER。載入評論時會連帶 join 出整個 `User`（含 `password` 欄位）；一般建議所有 `@ManyToOne` 明確設為 `fetch = FetchType.LAZY`，需要時再用 fetch join / `@EntityGraph`。改 fetch type 影響面較廣（其他用到這些關聯的地方都要確認），建議單獨處理。
+- `getHotelDetail()` 的「房型圖片」實際查的是 `findByHotelIdAndIsCover(hotelId, true)`，也就是**飯店封面圖**，每個房型拿到的都是同一批圖片，不是房型自己的圖（`RoomType` 只有 `imgUrl` 單一欄位）。這次只把它移到迴圈外，行為不變；是否為預期設計需確認。
+- `countBookedRoomsByHotel()`（沿用舊 `countBookedRooms()` 條件）沒有排除 `status = CANCELED` 的訂單，已取消的訂單仍會佔用可訂房數。
+- 資料庫例外被包裝成 `401 Unauthorized: Invalid or missing token` 回傳（上述 bytea 錯誤實際回給前端的訊息就是這個），錯誤處理會誤導除錯方向，應追查是哪個 filter/handler 把所有例外都當成認證失敗。
+- `HotelRepository.findHotelsWithDistrictAndCity()` 從未被呼叫（看起來是當初想解 N+1 但沒接上），可刪除。
 
 ---
 
@@ -756,8 +790,12 @@ Google Maps 整合相對獨立、風險低。若保留，可在「建立/更新�
 | ✅ | 修復 `Order.status`/`Payment.method`/`Payment.status` 的 MySQL ENUM `columnDefinition` | 🎓 Learn-it-myself | 高（JPA 映射原理） | [§5.2](#52-mysql-專屬語法在-entity-中硬編碼) |
 | ✅ | 修復 native query 中的 Boolean 語法 | ⚡ Fix-it-faster | 低 | [§5.2](#52-mysql-專屬語法在-entity-中硬編碼) |
 | ✅ | 替換 JDBC driver 和 datasource URL | ⚡ Fix-it-faster | 低 | [§5.4](#54-mysql--postgresql-遷移全面評估) |
-| ⬜ | 修復 `HotelServiceImpl.searchHotels()` N+1 問題 | 🎓 Learn-it-myself | **高**（N+1 是面試熱點） | [§2.2](#22-搜尋邏輯載入全部資料到記憶體致命效能問題) / [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
-| ⬜ | 修復 `FavoriteServiceImpl.getFavoriteHotels()` N+1 | 🎓 Learn-it-myself | 高 | [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
+| ✅ | 修復 `HotelServiceImpl.searchHotels()` N+1 問題 | 🎓 Learn-it-myself | **高**（N+1 是面試熱點） | [§2.2](#22-搜尋邏輯載入全部資料到記憶體致命效能問題) / [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
+| ✅ | 修復 `FavoriteServiceImpl.getFavoriteHotels()` N+1 | 🎓 Learn-it-myself | 高 | [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
+| ✅ | 修復複查時新發現的 N+1：飯店詳情、名稱搜尋、`/count`、聊天室列表、可訂房型 | ⚡ Fix-it-faster | 中 | [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
+| ⬜ | `@ManyToOne` 全面改為明確 `FetchType.LAZY`（`Review`、`ChatRoom` 等預設 EAGER） | ⚡ Fix-it-faster | 中（fetch 策略是面試熱點） | [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
+| ⬜ | 可訂房數計算排除已取消訂單；確認飯店詳情「房型圖片」實為飯店封面圖的行為 | ⚡ Fix-it-faster | 低 | [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
+| ⬜ | 追查資料庫例外被回成 `401 Unauthorized: Invalid or missing token` 的錯誤處理 | ⚡ Fix-it-faster | 中 | [§5.1](#51-hotel-搜尋-n1-問題最嚴重的效能問題) |
 | ✅ | 為常用查詢欄位加索引（Flyway migration） | 🎓 Learn-it-myself | 中（DB 設計概念） | [§5.5](#55-缺少索引可擴展性問題) |
 | ✅ | 本地 Docker PostgreSQL 驗證遷移正確性 | 🎓 Learn-it-myself | **高**（實際動手體驗） | [§5.4](#54-mysql--postgresql-遷移全面評估) |
 | ⬜ | 資料遷移（暫緩，改用假資料測試；之後如需要可單獨匯出 `hotels`） | ⚡ Fix-it-faster | 低 | [§5.4](#54-mysql--postgresql-遷移全面評估) |
